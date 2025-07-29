@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>关于我们 - "泉"力以赴队</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script>
+tailwind.config = {
+theme: {
+extend: {
+colors: {
+primary: '#1E90FF',
+secondary: '#007AFF'
+},
+borderRadius: {
+'none': '0px',
+'sm': '2px',
+DEFAULT: '4px',
+'md': '8px',
+'lg': '12px',
+'xl': '16px',
+'2xl': '20px',
+'3xl': '24px',
+'full': '9999px',
+'button': '4px'
+}
+}
+}
+}
+</script>
+<style>
+.team-member-card:hover {
+transform: translateY(-8px);
+box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+.water-drop {
+position: relative;
+}
+.water-drop::after {
+content: "";
+position: absolute;
+bottom: -10px;
+left: 50%;
+transform: translateX(-50%);
+width: 60px;
+height: 30px;
+background: url('https://ai-public.mastergo.com/ai/img_res/986e563f5a9e72367d3281b9fea53f51.jpg') no-repeat center center;
+background-size: contain;
+}
+.wave-divider {
+position: relative;
+height: 30px;
+overflow: hidden;
+}
+.wave-divider::before {
+content: "";
+position: absolute;
+left: 0;
+right: 0;
+top: 0;
+height: 100%;
+background: url('https://ai-public.mastergo.com/ai/img_res/a023c22ee39efbc5735931c3f522a335.jpg') repeat-x;
+background-size: contain;
+}
+</style>
+</head>
+<body class="bg-white min-h-screen font-sans text-gray-800">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+<!-- 团队名称区域 -->
+<div class="text-center mb-12">
+<div class="water-drop inline-block">
+<h1 class="text-4xl md:text-5xl font-bold text-primary mb-4">
+<span class="font-['Pacifico'] text-secondary">"泉"</span>力以赴队
+</h1>
+</div>
+<div class="wave-divider my-6"></div>
+<h2 class="text-2xl md:text-3xl font-semibold text-gray-700">
+从<span class="text-primary">"泉"</span>出发，用<span class="text-secondary">AI</span>出圈!
+<i class="fas fa-robot ml-2 text-secondary" style="width: 24px; height: 24px; display: inline-flex; justify-content: center; align-items: center;"></i>
+</h2>
+</div>
+<!-- 团队介绍 -->
+<div class="bg-gray-50 rounded-xl p-8 mb-16 shadow-sm">
+<div class="max-w-3xl mx-auto text-center">
+<h3 class="text-2xl font-bold text-gray-800 mb-6">我们的故事</h3>
+<p class="text-gray-600 mb-6">
+"泉"力以赴队成立于2025年，由一群热爱技术与创新的年轻人组成。我们以"泉"为名，象征着源源不断的创新活力和清澈透明的合作精神。团队专注于人工智能领域的研究与应用开发，致力于将前沿AI技术转化为实际解决方案。
+</p>
+<p class="text-gray-600">
+团队成员来自国内外顶尖高校，拥有丰富的行业经验和技术专长。我们相信，如同泉水汇聚成河，每个人的专长汇聚在一起，就能创造出改变世界的产品。
+</p>
+</div>
+</div>
+<!-- 团队成员 -->
+<div class="mb-16">
+<h3 class="text-3xl font-bold text-center text-gray-800 mb-12">团队成员</h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-12">
+<!-- 成员1 -->
+<div class="team-member-card bg-white rounded-xl p-8 shadow-md transition-all duration-300 ease-in-out">
+<div class="w-80 h-80 mx-auto rounded-full overflow-hidden border-4 border-primary">
+<img src="img/cyh.png"
+alt="崔宇晗" class="w-full h-full object-cover">
+</div>
+<h4 class="text-2xl font-bold text-center text-gray-800 mt-6">崔宇晗</h4>
+</div>
+<!-- 成员2 -->
+<div class="team-member-card bg-white rounded-xl p-8 shadow-md transition-all duration-300 ease-in-out">
+<div class="w-80 h-80 mx-auto rounded-full overflow-hidden border-4 border-primary">
+<img src="img/khm.png"
+alt="柯慧敏" class="w-full h-full object-cover">
+</div>
+<h4 class="text-2xl font-bold text-center text-gray-800 mt-6">柯慧敏</h4>
+</div>
+<!-- 成员3 -->
+<div class="team-member-card bg-white rounded-xl p-8 shadow-md transition-all duration-300 ease-in-out">
+<div class="w-80 h-80 mx-auto rounded-full overflow-hidden border-4 border-primary">
+<img src="img/wzj.jpg"
+alt="黄子介" class="w-full h-full object-cover">
+</div>
+<h4 class="text-2xl font-bold text-center text-gray-800 mt-6">黄子介</h4>
+</div>
+<!-- 成员4 -->
+<div class="team-member-card bg-white rounded-xl p-8 shadow-md transition-all duration-300 ease-in-out">
+<div class="w-80 h-80 mx-auto rounded-full overflow-hidden border-4 border-primary">
+<img src="img/hdb.png"
+alt="黄冬波" class="w-full h-full object-cover">
+</div>
+<h4 class="text-2xl font-bold text-center text-gray-800 mt-6">黄冬波</h4>
+</div>
+</div>
+</div>
+<!-- 团队价值观 -->
+<div class="bg-gradient-to-r from-primary to-secondary rounded-xl p-8 text-white mb-16">
+<h3 class="text-2xl font-bold text-center mb-8">我们的价值观</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="text-center">
+<div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+<i class="fas fa-lightbulb text-2xl" style="width: 24px; height: 24px; display: flex; justify-content: center; align-items: center;"></i>
+</div>
+<h4 class="text-xl font-semibold mb-2">创新</h4>
+<p class="text-sm opacity-90">持续探索前沿技术，勇于突破传统思维</p>
+</div>
+<div class="text-center">
+<div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+<i class="fas fa-users text-2xl" style="width: 24px; height: 24px; display: flex; justify-content: center; align-items: center;"></i>
+</div>
+<h4 class="text-xl font-semibold mb-2">协作</h4>
+<p class="text-sm opacity-90">如同泉水汇聚，团队合作创造更大价值</p>
+</div>
+<div class="text-center">
+<div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+<i class="fas fa-bullseye text-2xl" style="width: 24px; height: 24px; display: flex; justify-content: center; align-items: center;"></i>
+</div>
+<h4 class="text-xl font-semibold mb-2">卓越</h4>
+<p class="text-sm opacity-90">追求极致品质，打造行业标杆产品</p>
+</div>
+</div>
+</div>
+</div>
+<!-- 底部 -->
+<footer class="bg-gray-50 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col items-center">
+            <!-- <h2 class="font-['Pacifico'] text-3xl text-primary mb-4">logo</h2> -->
+            <p class="text-gray-500 text-center mb-6">从"泉"出发，用 AI 出圈!</p>
+            <div class="flex space-x-6 mb-8">
+                <a href="#" class="text-gray-400 hover:text-primary">
+                    <i class="fab fa-weixin text-2xl" style="width: 24px; height: 24px; display: flex; justify-content: center; align-items: center;"></i>
+                </a>
+                <a href="#" class="text-gray-400 hover:text-primary">
+                    <i class="fab fa-weibo text-2xl" style="width: 24px; height: 24px; display: flex; justify-content: center; align-items: center;"></i>
+                </a>
+                <a href="#" class="text-gray-400 hover:text-primary">
+                    <i class="fab fa-github text-2xl" style="width: 24px; height: 24px; display: flex; justify-content: center; align-items: center;"></i>
+                </a>
+            </div>
+            <div class="text-sm text-gray-400">
+                © 2025 "泉"力以赴队. All rights reserved.
+            </div>
+        </div>
+    </div>
+</footer>
+</body>
+</html>

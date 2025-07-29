@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>饮食追踪器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4ade80',
+                        secondary: '#f97316',
+                        neutral: '#f3f4f6',
+                        dark: '#1f2937'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            }
+            .input-focus {
+                @apply focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none;
+            }
+            .btn-hover {
+                @apply hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen flex flex-col">
+    <!-- 导航栏 -->
+    <header class="bg-white shadow-md sticky top-0 z-10 transition-all duration-300">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-cutlery text-primary text-2xl"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-dark">饮食追踪器</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="toggleTheme" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                    <i class="fa fa-moon-o text-dark"></i>
+                </button>
+                <button id="exportData" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg shadow btn-hover flex items-center">
+                    <i class="fa fa-download mr-2"></i>导出数据
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 左侧：添加饮食记录表单 -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl p-6 card-shadow transition-all duration-300 hover:shadow-xl">
+                    <h2 class="text-xl font-bold mb-6 flex items-center">
+                        <i class="fa fa-plus-circle text-primary mr-2"></i>添加饮食记录
+                    </h2>
+                    <form id="addFoodForm" class="space-y-4">
+                        <div>
+                            <label for="foodName" class="block text-sm font-medium text-gray-700 mb-1">食物名称</label>
+                            <input type="text" id="foodName" name="foodName" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus transition-colors duration-200">
+                        </div>
+                        <div>
+                            <label for="calories" class="block text-sm font-medium text-gray-700 mb-1">卡路里 (千卡)</label>
+                            <input type="number" id="calories" name="calories" min="0" step="0.1" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus transition-colors duration-200">
+                        </div>
+                        <div>
+                            <label for="protein" class="block text-sm font-medium text-gray-700 mb-1">蛋白质 (克)</label>
+                            <input type="number" id="protein" name="protein" min="0" step="0.1" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus transition-colors duration-200">
+                        </div>
+                        <div>
+                            <label for="carbs" class="block text-sm font-medium text-gray-700 mb-1">碳水化合物 (克)</label>
+                            <input type="number" id="carbs" name="carbs" min="0" step="0.1" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus transition-colors duration-200">
+                        </div>
+                        <div>
+                            <label for="fat" class="block text-sm font-medium text-gray-700 mb-1">脂肪 (克)</label>
+                            <input type="number" id="fat" name="fat" min="0" step="0.1" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus transition-colors duration-200">
+                        </div>
+                        <div>
+                            <label for="mealType" class="block text-sm font-medium text-gray-700 mb-1">餐次</label>
+                            <select id="mealType" name="mealType" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus transition-colors duration-200">
+                                <option value="早餐">早餐</option>
+                                <option value="午餐">午餐</option>
+                                <option value="晚餐">晚餐</option>
+                                <option value="零食">零食</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="date" class="block text-sm font-medium text-gray-700 mb-1">日期</label>
+                            <input type="date" id="date" name="date" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus transition-colors duration-200">
+                        </div>
+                        <div class="pt-2">
+                            <button type="submit" id="addFoodBtn"
+                                class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg shadow btn-hover flex items-center justify-center">
+                                <i class="fa fa-plus mr-2"></i>添加记录
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 右侧：饮食记录列表和统计信息 -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- 统计信息卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-xl p-6 card-shadow transition-all duration-300 hover:shadow-xl border-l-4 border-primary">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">总卡路里</p>
+                                <h3 id="totalCalories" class="text-2xl font-bold text-dark mt-1">0 千卡</h3>
+                            </div>
+                            <div class="bg-primary/10 p-3 rounded-full">
+                                <i class="fa fa-fire text-primary text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-gray-500">
+                            <i class="fa fa-clock-o mr-1"></i>今日摄入
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 card-shadow transition-all duration-300 hover:shadow-xl border-l-4 border-blue-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">蛋白质</p>
+                                <h3 id="totalProtein" class="text-2xl font-bold text-dark mt-1">0 克</h3>
+                            </div>
+                            <div class="bg-blue-500/10 p-3 rounded-full">
+                                <i class="fa fa-drumstick-bite text-blue-500 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-gray-500">
+                            <i class="fa fa-clock-o mr-1"></i>今日摄入
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 card-shadow transition-all duration-300 hover:shadow-xl border-l-4 border-yellow-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">碳水化合物</p>
+                                <h3 id="totalCarbs" class="text-2xl font-bold text-dark mt-1">0 克</h3>
+                            </div>
+                            <div class="bg-yellow-500/10 p-3 rounded-full">
+                                <i class="fa fa-bread-slice text-yellow-500 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-gray-500">
+                            <i class="fa fa-clock-o mr-1"></i>今日摄入
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 card-shadow transition-all duration-300 hover:shadow-xl border-l-4 border-red-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">脂肪</p>
+                                <h3 id="totalFat" class="text-2xl font-bold text-dark mt-1">0 克</h3>
+                            </div>
+                            <div class="bg-red-500/10 p-3 rounded-full">
+                                <i class="fa fa-bacon text-red-500 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-gray-500">
+                            <i class="fa fa-clock-o mr-1"></i>今日摄入
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 营养成分图表 -->
+                <div class="bg-white rounded-xl p-6 card-shadow transition-all duration-300 hover:shadow-xl">
+                    <h2 class="text-xl font-bold mb-6 flex items-center">
+                        <i class="fa fa-pie-chart text-primary mr-2"></i>营养成分分布
+                    </h2>
+                    <div class="h-64">
+                        <canvas id="nutritionChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 饮食记录列表 -->
+                <div class="bg-white rounded-xl p-6 card-shadow transition-all duration-300 hover:shadow-xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fa fa-list-alt text-primary mr-2"></i>饮食记录
+                        </h2>
+                        <div class="flex space-x-2">
+                            <div class="relative">
+                                <input type="date" id="filterDate"
+                                    class="px-4 py-2 border border-gray-300 rounded-lg input-focus transition-colors duration-200">
+                            </div>
+                            <button id="clearAll" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow btn-hover flex items-center">
+                                <i class="fa fa-trash mr-2"></i>清空记录
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">食物名称</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">卡路里</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">餐次</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="foodList" class="bg-white divide-y divide-gray-200">
+                                <!-- 记录将通过 JavaScript 动态添加 -->
+                                <tr class="text-center">
+                                    <td colspan="5" class="px-6 py-12 text-gray-500">
+                                        <div class="flex flex-col items-center">
+                                            <i class="fa fa-cutlery text-4xl text-gray-300 mb-4"></i>
+                                            <p>暂无饮食记录</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="pagination" class="mt-4 flex justify-between items-center">
+                        <div class="text-sm text-gray-500">
+                            显示 <span id="startRange">0</span>-<span id="endRange">0</span> 条，共 <span id="totalItems">0</span> 条
+                        </div>
+                        <div class="flex space-x-1">
+                            <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i class="fa fa-chevron-left"></i>
+                            </button>
+                            <span id="currentPage">1</span>
+                            <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i class="fa fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 mt-8">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-gray-500 text-sm">© 2025 饮食追踪器. 健康生活从记录开始.</p>
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors duration-200">
+                        <i class="fa fa-github text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors duration-200">
+                        <i class="fa fa-twitter text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors duration-200">
+                        <i class="fa fa-instagram text-xl"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 详情模态框 -->
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-dark" id="modalTitle">食物详情</h3>
+                <button id="closeModal" class="text-gray-400 hover:text-gray-500">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">食物名称</p>
+                        <p id="modalFoodName" class="font-semibold"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">卡路里</p>
+                        <p id="modalCalories" class="font-semibold"></p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">蛋白质</p>
+                        <p id="modalProtein" class="font-semibold"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">碳水化合物</p>
+                        <p id="modalCarbs" class="font-semibold"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">脂肪</p>
+                        <p id="modalFat" class="font-semibold"></p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">餐次</p>
+                        <p id="modalMealType" class="font-semibold"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">日期</p>
+                        <p id="modalDate" class="font-semibold"></p>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h4 class="text-sm font-medium text-gray-500 mb-2">营养成分</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-xs font-medium text-gray-700">蛋白质</span>
+                                <span id="proteinPercent" class="text-xs font-medium text-gray-700">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="proteinBar" class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-xs font-medium text-gray-700">碳水化合物</span>
+                                <span id="carbsPercent" class="text-xs font-medium text-gray-700">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="carbsBar" class="bg-yellow-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-xs font-medium text-gray-700">脂肪</span>
+                                <span id="fatPercent" class="text-xs font-medium text-gray-700">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="fatBar" class="bg-red-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button id="closeModalBtn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors duration-200">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认模态框 -->
+    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="deleteModalContent">
+            <div class="text-center mb-4">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+                    <i class="fa fa-exclamation-triangle text-red-500 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-dark">确认删除</h3>
+                <p class="text-gray-500 mt-2">你确定要删除这条饮食记录吗？此操作无法撤销。</p>
+            </div>
+            <div class="flex justify-center space-x-4 mt-6">
+                <button id="cancelDelete" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors duration-200">
+                    取消
+                </button>
+                <button id="confirmDelete" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200">
+                    确认删除
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 清空确认模态框 -->
+    <div id="clearAllModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="clearAllModalContent">
+            <div class="text-center mb-4">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+                    <i class="fa fa-trash text-red-500 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-dark">确认清空</h3>
+                <p class="text-gray-500 mt-2">你确定要清空所有饮食记录吗？此操作无法撤销。</p>
+            </div>
+            <div class="flex justify-center space-x-4 mt-6">
+                <button id="cancelClearAll" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors duration-200">
+                    取消
+                </button>
+                <button id="confirmClearAll" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200">
+                    确认清空
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化日期为今天
+        document.getElementById('date').valueAsDate = new Date();
+        document.getElementById('filterDate').valueAsDate = new Date();
+
+        // 存储当前选中的记录ID
+        let selectedRecordId = null;
+        // 当前页码
+        let currentPage = 1;
+        // 每页显示数量
+        const itemsPerPage = 5;
+        // 当前过滤日期
+        let currentFilterDate = new Date().toISOString().split('T')[0];
+
+        // 从Cookie获取饮食记录
+        function getFoodRecords() {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('foodRecords='));
+                
+            return cookieValue ? JSON.parse(decodeURIComponent(cookieValue.split('=')[1])) : [];
+        }
+
+        // 保存饮食记录到Cookie
+        function saveFoodRecords(records) {
+            const cookieValue = encodeURIComponent(JSON.stringify(records));
+            // 保存1年
+            const expirationDate = new Date();
+            expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+            
+            document.cookie = `foodRecords=${cookieValue}; expires=${expirationDate.toUTCString()}; path=/`;
+        }
+
+        // 添加新的饮食记录
+        document.getElementById('addFoodForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const foodName = document.getElementById('foodName').value;
+            const calories = parseFloat(document.getElementById('calories').value);
+            const protein = parseFloat(document.getElementById('protein').value);
+            const carbs = parseFloat(document.getElementById('carbs').value);
+            const fat = parseFloat(document.getElementById('fat').value);
+            const mealType = document.getElementById('mealType').value;
+            const date = document.getElementById('date').value;
+            
+            const newRecord = {
+                id: Date.now().toString(), // 使用时间戳作为唯一ID
+                foodName,
+                calories,
+                protein,
+                carbs,
+                fat,
+                mealType,
+                date
+            };
+            
+            const records = getFoodRecords();
+            records.push(newRecord);
+            saveFoodRecords(records);
+            
+            // 重置表单
+            document.getElementById('addFoodForm').reset();
+            document.getElementById('date').valueAsDate = new Date();
+            
+            // 更新列表和统计信息
+            updateFoodList();
+            updateStatistics();
+            updateChart();
+            
+            // 显示成功提示
+            showNotification('饮食记录已添加成功！', 'success');
+        });
+
+        // 删除饮食记录
+        function deleteFoodRecord(id) {
+            const records = getFoodRecords();
+            const updatedRecords = records.filter(record => record.id !== id);
+            saveFoodRecords(updatedRecords);
+            
+            // 更新列表和统计信息
+            updateFoodList();
+            updateStatistics();
+            updateChart();
+            
+            // 关闭模态框
+            closeDeleteModal();
+            
+            // 显示成功提示
+            showNotification('饮食记录已删除！', 'success');
+        }
+
+        // 清空所有记录
+        function clearAllRecords() {
+            saveFoodRecords([]);
+            
+            // 更新列表和统计信息
+            updateFoodList();
+            updateStatistics();
+            updateChart();
+            
+            // 关闭模态框
+            closeClearAllModal();
+            
+            // 显示成功提示
+            showNotification('所有饮食记录已清空！', 'success');
+        }
+
+        // 按日期过滤记录
+        document.getElementById('filterDate').addEventListener('change', function() {
+            currentFilterDate = this.value;
+            currentPage = 1; // 重置页码
+            updateFoodList();
+            updateStatistics();
+            updateChart();
+        });
+
+        // 上一页
+        document.getElementById('prevPage').addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                updateFoodList();
+            }
+        });
+
+        // 下一页
+        document.getElementById('nextPage').addEventListener('click', function() {
+            const records = getFilteredRecords();
+            const totalPages = Math.ceil(records.length / itemsPerPage);
+            
+            if (currentPage < totalPages) {
+                currentPage++;
+                updateFoodList();
+            }
+        });
+
+        // 获取过滤后的记录
+        function getFilteredRecords() {
+            const records = getFoodRecords();
+            return records.filter(record => record.date === currentFilterDate);
+        }
+
+        // 更新饮食记录列表
+        function updateFoodList() {
+            const records = getFilteredRecords();
+            const foodListElement = document.getElementById('foodList');
+            const pagination = document.getElementById('pagination');
+            const startRange = document.getElementById('startRange');
+            const endRange = document.getElementById('endRange');
+            const totalItems = document.getElementById('totalItems');
+            const currentPageElement = document.getElementById('currentPage');
+            const prevPage = document.getElementById('prevPage');
+            const nextPage = document.getElementById('nextPage');
+            
+            // 计算分页
+            const totalPages = Math.max(1, Math.ceil(records.length / itemsPerPage));
+            currentPage = Math.min(currentPage, totalPages); // 确保当前页不超过总页数
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, records.length);
+            const paginatedRecords = records.slice(startIndex, endIndex);
+            
+            // 更新分页信息
+            startRange.textContent = records.length > 0 ? startIndex + 1 : 0;
+            endRange.textContent = endIndex;
+            totalItems.textContent = records.length;
+            currentPageElement.textContent = currentPage;
+            
+            // 启用/禁用分页按钮
+            prevPage.disabled = currentPage === 1;
+            nextPage.disabled = currentPage === totalPages;
+            
+            // 清空列表
+            foodListElement.innerHTML = '';
+            
+            if (paginatedRecords.length === 0) {
+                // 无记录时显示空状态
+                foodListElement.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="5" class="px-6 py-12 text-gray-500">
+                            <div class="flex flex-col items-center">
+                                <i class="fa fa-cutlery text-4xl text-gray-300 mb-4"></i>
+                                <p>暂无饮食记录</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                pagination.classList.add('hidden');
+            } else {
+                // 有记录时显示记录列表
+                pagination.classList.remove('hidden');
+                
+                paginatedRecords.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50 transition-colors duration-150';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">${record.foodName}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">${record.calories} 千卡</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">${record.mealType}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${formatDate(record.date)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button data-id="${record.id}" class="view-details text-primary hover:text-primary/80 mr-3 transition-colors duration-200">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                            <button data-id="${record.id}" class="delete-record text-red-500 hover:text-red-700 transition-colors duration-200">
+                                <i class="fa fa-trash"></i> 删除
+                            </button>
+                        </td>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</td>
+</tr>
+`;
+foodListElement.appendChild(row);
+});
+
+// 添加查看和删除事件监听器
+document.querySelectorAll('.view-details').forEach(button => {
+button.addEventListener('click', function() {
+const id = this.getAttribute('data-id');
+openDetailModal(id);
+});
+});
+
+document.querySelectorAll('.delete-record').forEach(button => {
+button.addEventListener('click', function() {
+const id = this.getAttribute('data-id');
+openDeleteModal(id);
+});
+});
+}
+}
+
+// 更新统计信息
+function updateStatistics() {
+const records = getFilteredRecords();
+
+let totalCalories = 0;
+let totalProtein = 0;
+let totalCarbs = 0;
+let totalFat = 0;
+
+records.forEach(record => {
+totalCalories += record.calories;
+totalProtein += record.protein;
+totalCarbs += record.carbs;
+totalFat += record.fat;
+});
+
+document.getElementById('totalCalories').textContent = totalCalories.toFixed(1) + ' 千卡';
+document.getElementById('totalProtein').textContent = totalProtein.toFixed(1) + ' 克';
+document.getElementById('totalCarbs').textContent = totalCarbs.toFixed(1) + ' 克';
+document.getElementById('totalFat').textContent = totalFat.toFixed(1) + ' 克';
+}
+
+// 更新图表
+function updateChart() {
+const records = getFilteredRecords();
+
+let totalProtein = 0;
+let totalCarbs = 0;
+let totalFat = 0;
+
+records.forEach(record => {
+totalProtein += record.protein;
+totalCarbs += record.carbs;
+totalFat += record.fat;
+});
+
+const ctx = document.getElementById('nutritionChart').getContext('2d');
+
+// 销毁现有图表
+if (window.nutritionChart) {
+// window.nutritionChart.destroy();
+}
+
+// 创建新图表
+window.nutritionChart = new Chart(ctx, {
+type: 'doughnut',
+data: {
+labels: ['蛋白质', '碳水化合物', '脂肪'],
+datasets: [{
+data: [totalProtein, totalCarbs, totalFat],
+backgroundColor: [
+'#3B82F6', // 蓝色
+'#F59E0B', // 黄色
+'#EF4444' // 红色
+],
+borderWidth: 0,
+hoverOffset: 15
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: {
+position: 'bottom',
+labels: {
+padding: 20,
+font: {
+size: 12
+}
+}
+},
+tooltip: {
+callbacks: {
+label: function(context) {
+const label = context.label || '';
+const value = context.raw || 0;
+const total = context.dataset.data.reduce((a, b) => a + b, 0);
+const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+return `${label}: ${value.toFixed(1)}g (${percentage}%)`;
+}
+}
+}
+},
+cutout: '70%',
+animation: {
+animateScale: true,
+animateRotate: true
+}
+}
+});
+}
+
+// 打开详情模态框
+function openDetailModal(id) {
+const records = getFoodRecords();
+const record = records.find(record => record.id === id);
+
+if (record) {
+document.getElementById('modalFoodName').textContent = record.foodName;
+document.getElementById('modalCalories').textContent = record.calories + ' 千卡';
+document.getElementById('modalProtein').textContent = record.protein + ' 克';
+document.getElementById('modalCarbs').textContent = record.carbs + ' 克';
+document.getElementById('modalFat').textContent = record.fat + ' 克';
+document.getElementById('modalMealType').textContent = record.mealType;
+document.getElementById('modalDate').textContent = formatDate(record.date);
+
+// 计算营养成分百分比
+const totalNutrition = record.protein + record.carbs + record.fat;
+const proteinPercent = totalNutrition > 0 ? (record.protein / totalNutrition) * 100 : 0;
+const carbsPercent = totalNutrition > 0 ? (record.carbs / totalNutrition) * 100 : 0;
+const fatPercent = totalNutrition > 0 ? (record.fat / totalNutrition) * 100 : 0;
+
+document.getElementById('proteinPercent').textContent = proteinPercent.toFixed(1) + '%';
+document.getElementById('carbsPercent').textContent = carbsPercent.toFixed(1) + '%';
+document.getElementById('fatPercent').textContent = fatPercent.toFixed(1) + '%';
+
+document.getElementById('proteinBar').style.width = proteinPercent + '%';
+document.getElementById('carbsBar').style.width = carbsPercent + '%';
+document.getElementById('fatBar').style.width = fatPercent + '%';
+
+// 显示模态框
+const modal = document.getElementById('detailModal');
+const modalContent = document.getElementById('modalContent');
+
+modal.classList.remove('hidden');
+setTimeout(() => {
+modalContent.classList.remove('scale-95', 'opacity-0');
+modalContent.classList.add('scale-100', 'opacity-100');
+}, 10);
+}
+}
+
+// 关闭详情模态框
+function closeDetailModal() {
+const modal = document.getElementById('detailModal');
+const modalContent = document.getElementById('modalContent');
+
+modalContent.classList.remove('scale-100', 'opacity-100');
+modalContent.classList.add('scale-95', 'opacity-0');
+
+setTimeout(() => {
+modal.classList.add('hidden');
+}, 300);
+}
+
+// 打开删除确认模态框
+function openDeleteModal(id) {
+selectedRecordId = id;
+
+const modal = document.getElementById('deleteModal');
+const modalContent = document.getElementById('deleteModalContent');
+
+modal.classList.remove('hidden');
+setTimeout(() => {
+modalContent.classList.remove('scale-95', 'opacity-0');
+modalContent.classList.add('scale-100', 'opacity-100');
+}, 10);
+}
+
+// 关闭删除确认模态框
+function closeDeleteModal() {
+const modal = document.getElementById('deleteModal');
+const modalContent = document.getElementById('deleteModalContent');
+
+modalContent.classList.remove('scale-100', 'opacity-100');
+modalContent.classList.add('scale-95', 'opacity-0');
+
+setTimeout(() => {
+modal.classList.add('hidden');
+}, 300);
+}
+
+// 打开清空确认模态框
+function openClearAllModal() {
+const modal = document.getElementById('clearAllModal');
+const modalContent = document.getElementById('clearAllModalContent');
+
+modal.classList.remove('hidden');
+setTimeout(() => {
+modalContent.classList.remove('scale-95', 'opacity-0');
+modalContent.classList.add('scale-100', 'opacity-100');
+}, 10);
+}
+
+// 关闭清空确认模态框
+function closeClearAllModal() {
+const modal = document.getElementById('clearAllModal');
+const modalContent = document.getElementById('clearAllModalContent');
+
+modalContent.classList.remove('scale-100', 'opacity-100');
+modalContent.classList.add('scale-95', 'opacity-0');
+
+setTimeout(() => {
+modal.classList.add('hidden');
+}, 300);
+}
+
+// 格式化日期
+function formatDate(dateString) {
+const options = { year: 'numeric', month: 'long', day: 'numeric' };
+return new Date(dateString).toLocaleDateString('zh-CN', options);
+}
+
+// 显示通知
+function showNotification(message, type = 'info') {
+// 创建通知元素
+const notification = document.createElement('div');
+notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-500 ease-in-out z-50 flex items-center ${
+type === 'success' ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
+}`;
+
+notification.innerHTML = `
+<i class="fa ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'} mr-2"></i>
+<span>${message}</span>
+`;
+
+// 添加到页面
+document.body.appendChild(notification);
+
+// 显示动画
+setTimeout(() => {
+notification.classList.add('translate-y-0');
+notification.classList.remove('translate-y-[-20px]', 'opacity-0');
+}, 10);
+
+// 自动关闭
+setTimeout(() => {
+notification.classList.remove('translate-y-0');
+notification.classList.add('translate-y-[-20px]', 'opacity-0');
+
+setTimeout(() => {
+document.body.removeChild(notification);
+}, 500);
+}, 3000);
+}
+
+// 导出数据
+document.getElementById('exportData').addEventListener('click', function() {
+const records = getFoodRecords();
+
+if (records.length === 0) {
+showNotification('没有数据可导出！', 'info');
+return;
+}
+
+// 创建CSV内容
+let csvContent = "ID,食物名称,卡路里(千卡),蛋白质(克),碳水化合物(克),脂肪(克),餐次,日期\n";
+
+records.forEach(record => {
+csvContent += `${record.id},"${record.foodName}",${record.calories},${record.protein},${record.carbs},${record.fat},"${record.mealType}",${record.date}\n`;
+});
+
+// 创建下载链接
+const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+const url = URL.createObjectURL(blob);
+const link = document.createElement('a');
+link.setAttribute('href', url);
+link.setAttribute('download', `饮食记录_${new Date().toISOString().split('T')[0]}.csv`);
+link.style.visibility = 'hidden';
+
+// 添加到页面并触发下载
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+
+showNotification('数据导出成功！', 'success');
+});
+
+// 模态框关闭事件
+document.getElementById('closeModal').addEventListener('click', closeDetailModal);
+document.getElementById('closeModalBtn').addEventListener('click', closeDetailModal);
+document.getElementById('cancelDelete').addEventListener('click', closeDeleteModal);
+document.getElementById('confirmDelete').addEventListener('click', function() {
+if (selectedRecordId) {
+deleteFoodRecord(selectedRecordId);
+}
+});
+
+document.getElementById('clearAll').addEventListener('click', openClearAllModal);
+document.getElementById('cancelClearAll').addEventListener('click', closeClearAllModal);
+document.getElementById('confirmClearAll').addEventListener('click', clearAllRecords);
+
+// 点击模态框外部关闭
+document.getElementById('detailModal').addEventListener('click', function(e) {
+if (e.target === this) {
+closeDetailModal();
+}
+});
+
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+if (e.target === this) {
+closeDeleteModal();
+}
+});
+
+document.getElementById('clearAllModal').addEventListener('click', function(e) {
+if (e.target === this) {
+closeClearAllModal();
+}
+});
+
+// 切换主题
+document.getElementById('toggleTheme').addEventListener('click', function() {
+document.body.classList.toggle('dark');
+const icon = this.querySelector('i');
+
+if (icon.classList.contains('fa-moon-o')) {
+icon.classList.remove('fa-moon-o');
+icon.classList.add('fa-sun-o');
+} else {
+icon.classList.remove('fa-sun-o');
+icon.classList.add('fa-moon-o');
+}
+});
+
+// 页面加载时初始化
+window.addEventListener('DOMContentLoaded', function() {
+updateFoodList();
+updateStatistics();
+updateChart();
+});
+</script>
+</body>
+</html>
+    

@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>睡眠监测 | 记录和分析你的睡眠</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36BFFA',
+            accent: '#FF6B84',
+            dark: '#1D2939',
+            light: '#F9FAFB'
+          },
+          fontFamily: {
+            inter: ['Inter', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+      .input-focus {
+        @apply focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200;
+      }
+      .btn-hover {
+        @apply hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200;
+      }
+    }
+  </style>
+</head>
+
+<body class="font-inter bg-light text-dark min-h-screen flex flex-col">
+  <!-- 导航栏 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-moon-o text-primary text-2xl"></i>
+        <h1 class="text-xl font-bold text-primary">SleepTracker</h1>
+      </div>
+      
+      <nav class="hidden md:flex space-x-6">
+        <a href="#dashboard" class="text-dark hover:text-primary transition-colors">仪表盘</a>
+        <a href="#records" class="text-dark hover:text-primary transition-colors">睡眠记录</a>
+        <a href="#analysis" class="text-dark hover:text-primary transition-colors">睡眠分析</a>
+        <a href="#tips" class="text-dark hover:text-primary transition-colors">睡眠建议</a>
+      </nav>
+      
+      <button id="menu-toggle" class="md:hidden text-dark hover:text-primary">
+        <i class="fa fa-bars text-xl"></i>
+      </button>
+    </div>
+    
+    <!-- 移动端菜单 -->
+    <div id="mobile-menu" class="hidden md:hidden bg-white border-t">
+      <div class="container mx-auto px-4 py-2 flex flex-col space-y-3">
+        <a href="#dashboard" class="py-2 text-dark hover:text-primary transition-colors">仪表盘</a>
+        <a href="#records" class="py-2 text-dark hover:text-primary transition-colors">睡眠记录</a>
+        <a href="#analysis" class="py-2 text-dark hover:text-primary transition-colors">睡眠分析</a>
+        <a href="#tips" class="py-2 text-dark hover:text-primary transition-colors">睡眠建议</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="flex-grow container mx-auto px-4 py-8">
+    <!-- 欢迎信息和添加记录按钮 -->
+    <section class="mb-10 text-center">
+      <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-4">追踪你的睡眠质量</h2>
+      <p class="text-gray-600 max-w-2xl mx-auto mb-8">记录睡眠时间和质量，获取个性化分析和改善建议，让每一夜的睡眠都成为恢复活力的源泉</p>
+      
+      <button id="add-record-btn" class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg font-medium flex items-center mx-auto btn-hover">
+        <i class="fa fa-plus-circle mr-2"></i> 添加睡眠记录
+      </button>
+    </section>
+    
+    <!-- 仪表盘 -->
+    <section id="dashboard" class="mb-12">
+      <h3 class="text-xl font-bold mb-6 flex items-center">
+        <i class="fa fa-dashboard text-primary mr-2"></i> 睡眠仪表盘
+      </h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- 平均睡眠时间卡片 -->
+        <div class="bg-white rounded-xl p-6 card-shadow hover:shadow-lg transition-shadow">
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <p class="text-gray-500 text-sm">平均睡眠时间</p>
+              <h4 id="avg-sleep-time" class="text-3xl font-bold">--</h4>
+            </div>
+            <div class="bg-primary/10 p-3 rounded-lg">
+              <i class="fa fa-clock-o text-primary text-xl"></i>
+            </div>
+          </div>
+          <div class="text-xs text-gray-500">基于过去7天的数据</div>
+        </div>
+        
+        <!-- 平均睡眠质量卡片 -->
+        <div class="bg-white rounded-xl p-6 card-shadow hover:shadow-lg transition-shadow">
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <p class="text-gray-500 text-sm">平均睡眠质量</p>
+              <h4 id="avg-sleep-quality" class="text-3xl font-bold">--</h4>
+            </div>
+            <div class="bg-secondary/10 p-3 rounded-lg">
+              <i class="fa fa-star text-secondary text-xl"></i>
+            </div>
+          </div>
+          <div class="text-xs text-gray-500">基于过去7天的数据</div>
+        </div>
+        
+        <!-- 最近记录卡片 -->
+        <div class="bg-white rounded-xl p-6 card-shadow hover:shadow-lg transition-shadow">
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <p class="text-gray-500 text-sm">最近记录</p>
+              <h4 id="last-record-date" class="text-xl font-bold">--</h4>
+            </div>
+            <div class="bg-accent/10 p-3 rounded-lg">
+              <i class="fa fa-history text-accent text-xl"></i>
+            </div>
+          </div>
+          <div class="text-xs text-gray-500">上次记录的日期</div>
+        </div>
+      </div>
+      
+      <!-- 睡眠趋势图表 -->
+      <div class="bg-white rounded-xl p-6 card-shadow">
+        <div class="flex justify-between items-center mb-6">
+          <h4 class="font-semibold">睡眠趋势</h4>
+          <div class="flex space-x-2">
+            <button class="time-filter-btn px-3 py-1 text-sm rounded-md bg-primary text-white" data-period="week">周</button>
+            <button class="time-filter-btn px-3 py-1 text-sm rounded-md bg-gray-100 text-gray-600" data-period="month">月</button>
+            <button class="time-filter-btn px-3 py-1 text-sm rounded-md bg-gray-100 text-gray-600" data-period="year">年</button>
+          </div>
+        </div>
+        <div class="h-80">
+          <canvas id="sleepTrendChart"></canvas>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 睡眠记录列表 -->
+    <section id="records" class="mb-12">
+      <h3 class="text-xl font-bold mb-6 flex items-center">
+        <i class="fa fa-list-alt text-primary mr-2"></i> 睡眠记录
+      </h3>
+      
+      <div class="bg-white rounded-xl card-shadow overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="bg-gray-50">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">开始时间</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">结束时间</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时长</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">质量</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">备注</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+              </tr>
+            </thead>
+            <tbody id="sleep-records" class="divide-y divide-gray-200">
+              <!-- 记录将通过JavaScript动态添加 -->
+              <tr class="text-center">
+                <td colspan="7" class="px-6 py-12 text-gray-500">
+                  <div class="flex flex-col items-center">
+                    <i class="fa fa-bed text-4xl mb-4 text-gray-300"></i>
+                    <p>暂无睡眠记录</p>
+                    <p class="text-sm">点击上方"添加睡眠记录"按钮开始记录你的睡眠</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 睡眠分析 -->
+    <section id="analysis" class="mb-12">
+      <h3 class="text-xl font-bold mb-6 flex items-center">
+        <i class="fa fa-bar-chart text-primary mr-2"></i> 睡眠分析
+      </h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 睡眠质量分布图表 -->
+        <div class="bg-white rounded-xl p-6 card-shadow">
+          <h4 class="font-semibold mb-4">睡眠质量分布</h4>
+          <div class="h-64">
+            <canvas id="sleepQualityChart"></canvas>
+          </div>
+        </div>
+        
+        <!-- 睡眠时间分布图表 -->
+        <div class="bg-white rounded-xl p-6 card-shadow">
+          <h4 class="font-semibold mb-4">睡眠时间分布</h4>
+          <div class="h-64">
+            <canvas id="sleepDurationChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 睡眠建议 -->
+    <section id="tips" class="mb-12">
+      <h3 class="text-xl font-bold mb-6 flex items-center">
+        <i class="fa fa-lightbulb-o text-primary mr-2"></i> 睡眠建议
+      </h3>
+      
+      <div id="sleep-tips" class="bg-white rounded-xl p-6 card-shadow">
+        <!-- 建议将通过JavaScript动态添加 -->
+        <div class="text-center py-8 text-gray-500">
+          <p>添加睡眠记录后，我们将为你提供个性化的睡眠建议</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 添加/编辑睡眠记录模态框 -->
+  <div id="record-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold" id="modal-title">添加睡眠记录</h3>
+        <button id="close-modal" class="text-gray-400 hover:text-gray-600">
+          <i class="fa fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <form id="sleep-record-form">
+        <input type="hidden" id="record-id">
+        
+        <div class="mb-4">
+          <label for="record-date" class="block text-sm font-medium text-gray-700 mb-1">日期</label>
+          <input type="date" id="record-date" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus" required>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label for="bed-time" class="block text-sm font-medium text-gray-700 mb-1">入睡时间</label>
+            <input type="time" id="bed-time" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus" required>
+          </div>
+          <div>
+            <label for="wake-up-time" class="block text-sm font-medium text-gray-700 mb-1">起床时间</label>
+            <input type="time" id="wake-up-time" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus" required>
+          </div>
+        </div>
+        
+        <div class="mb-4">
+          <label for="sleep-quality" class="block text-sm font-medium text-gray-700 mb-1">睡眠质量</label>
+          <div class="flex space-x-2">
+            <input type="radio" id="quality-1" name="sleep-quality" value="1" class="hidden peer">
+            <label for="quality-1" class="flex-1 py-2 text-center border border-gray-300 rounded-lg peer-checked:bg-accent peer-checked:text-white peer-checked:border-accent cursor-pointer transition-colors">
+              <i class="fa fa-star"></i> 很差
+            </label>
+            
+            <input type="radio" id="quality-2" name="sleep-quality" value="2" class="hidden peer">
+            <label for="quality-2" class="flex-1 py-2 text-center border border-gray-300 rounded-lg peer-checked:bg-accent peer-checked:text-white peer-checked:border-accent cursor-pointer transition-colors">
+              <i class="fa fa-star"></i><i class="fa fa-star"></i> 较差
+            </label>
+            
+            <input type="radio" id="quality-3" name="sleep-quality" value="3" class="hidden peer" checked>
+            <label for="quality-3" class="flex-1 py-2 text-center border border-gray-300 rounded-lg peer-checked:bg-accent peer-checked:text-white peer-checked:border-accent cursor-pointer transition-colors">
+              <i class="fa fa-star"></i><i class="fa fa-star"></i><i class="fa fa-star"></i> 一般
+            </label>
+            
+            <input type="radio" id="quality-4" name="sleep-quality" value="4" class="hidden peer">
+            <label for="quality-4" class="flex-1 py-2 text-center border border-gray-300 rounded-lg peer-checked:bg-accent peer-checked:text-white peer-checked:border-accent cursor-pointer transition-colors">
+              <i class="fa fa-star"></i><i class="fa fa-star"></i><i class="fa fa-star"></i><i class="fa fa-star"></i> 良好
+            </label>
+            
+            <input type="radio" id="quality-5" name="sleep-quality" value="5" class="hidden peer">
+            <label for="quality-5" class="flex-1 py-2 text-center border border-gray-300 rounded-lg peer-checked:bg-accent peer-checked:text-white peer-checked:border-accent cursor-pointer transition-colors">
+              <i class="fa fa-star"></i><i class="fa fa-star"></i><i class="fa fa-star"></i><i class="fa fa-star"></i><i class="fa fa-star"></i> 极佳
+            </label>
+          </div>
+        </div>
+        
+        <div class="mb-6">
+          <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">备注 (可选)</label>
+          <textarea id="notes" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus" placeholder="记录今天的睡眠感受、特殊事件或其他相关信息"></textarea>
+        </div>
+        
+        <div class="flex justify-end space-x-3">
+          <button type="button" id="cancel-record" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">取消</button>
+          <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg btn-hover">保存记录</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 删除确认模态框 -->
+  <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="delete-modal-content">
+      <div class="text-center mb-4">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+          <i class="fa fa-trash text-red-500 text-2xl"></i>
+        </div>
+        <h3 class="text-xl font-bold">确认删除</h3>
+        <p class="text-gray-600 mt-2">你确定要删除这条睡眠记录吗？此操作无法撤销。</p>
+      </div>
+      
+      <div class="flex justify-center space-x-3">
+        <button id="cancel-delete" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">取消</button>
+        <button id="confirm-delete" class="px-6 py-2 bg-red-500 text-white rounded-lg btn-hover">确认删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 页脚 -->
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-4 py-6">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="mb-4 md:mb-0">
+          <div class="flex items-center space-x-2">
+            <i class="fa fa-moon-o text-primary text-xl"></i>
+            <span class="font-bold text-primary">SleepTracker</span>
+          </div>
+          <p class="text-gray-500 text-sm mt-1">追踪你的睡眠质量，改善生活品质</p>
+        </div>
+        
+        <div class="flex space-x-6">
+          <a href="#" class="text-gray-500 hover:text-primary transition-colors">
+            <i class="fa fa-github text-xl"></i>
+          </a>
+          <a href="#" class="text-gray-500 hover:text-primary transition-colors">
+            <i class="fa fa-twitter text-xl"></i>
+          </a>
+          <a href="#" class="text-gray-500 hover:text-primary transition-colors">
+            <i class="fa fa-envelope text-xl"></i>
+          </a>
+        </div>
+      </div>
+      
+      <div class="border-t border-gray-200 mt-6 pt-6 text-center text-gray-500 text-sm">
+        &copy; 2025 SleepTracker. 保留所有权利。
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // 睡眠记录管理
+    const SleepTracker = {
+      // 初始化应用
+      init() {
+        this.records = this.loadRecords();
+        this.currentRecordId = null;
+        this.initEventListeners();
+        this.renderRecords();
+        this.updateDashboard();
+        this.renderCharts();
+        this.updateSleepTips();
+      },
+      
+      // 从cookie加载睡眠记录
+      loadRecords() {
+        const cookieValue = document.cookie.replace(/(?:(?:^|.*;\s*)sleepRecords\s*=\s*([^;]*).*$)|^.*$/, '$1');
+        return cookieValue ? JSON.parse(decodeURIComponent(cookieValue)) : [];
+      },
+      
+      // 保存睡眠记录到cookie
+      saveRecords() {
+        const cookieValue = encodeURIComponent(JSON.stringify(this.records));
+        // 保存1年
+        const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+        document.cookie = `sleepRecords=${cookieValue}; expires=${expires}; path=/`;
+      },
+      
+      // 初始化事件监听器
+      initEventListeners() {
+        // 菜单切换
+        document.getElementById('menu-toggle').addEventListener('click', () => {
+          document.getElementById('mobile-menu').classList.toggle('hidden');
+        });
+        
+        // 添加记录按钮
+        document.getElementById('add-record-btn').addEventListener('click', () => this.openAddRecordModal());
+        
+        // 关闭模态框
+        document.getElementById('close-modal').addEventListener('click', () => this.closeRecordModal());
+        document.getElementById('cancel-record').addEventListener('click', () => this.closeRecordModal());
+        
+        // 提交表单
+        document.getElementById('sleep-record-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.saveRecord();
+        });
+        
+        // 删除确认模态框
+        document.getElementById('cancel-delete').addEventListener('click', () => this.closeDeleteModal());
+        document.getElementById('confirm-delete').addEventListener('click', () => this.deleteCurrentRecord());
+        
+        // 时间过滤器
+        document.querySelectorAll('.time-filter-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.time-filter-btn').forEach(b => {
+              b.classList.remove('bg-primary', 'text-white');
+              b.classList.add('bg-gray-100', 'text-gray-600');
+            });
+            e.target.classList.remove('bg-gray-100', 'text-gray-600');
+            e.target.classList.add('bg-primary', 'text-white');
+            
+            this.renderCharts(e.target.dataset.period);
+          });
+        });
+      },
+      
+      // 打开添加记录模态框
+      openAddRecordModal() {
+        this.currentRecordId = null;
+        const modalTitle = document.getElementById('modal-title');
+        const form = document.getElementById('sleep-record-form');
+        
+        modalTitle.textContent = '添加睡眠记录';
+        form.reset();
+        
+        // 设置默认日期为今天
+        const today = new Date();
+        const formattedDate = today.toISOString().split('T')[0];
+        document.getElementById('record-date').value = formattedDate;
+        
+        // 设置默认时间
+        document.getElementById('bed-time').value = '23:00';
+        document.getElementById('wake-up-time').value = '07:00';
+        
+        this.openModal();
+      },
+      
+      // 打开编辑记录模态框
+      openEditRecordModal(id) {
+        this.currentRecordId = id;
+        const modalTitle = document.getElementById('modal-title');
+        const form = document.getElementById('sleep-record-form');
+        const record = this.records.find(r => r.id === id);
+        
+        if (!record) return;
+        
+        modalTitle.textContent = '编辑睡眠记录';
+        document.getElementById('record-id').value = record.id;
+        document.getElementById('record-date').value = record.date;
+        document.getElementById('bed-time').value = record.bedTime;
+        document.getElementById('wake-up-time').value = record.wakeUpTime;
+        document.querySelector(`input[name="sleep-quality"][value="${record.quality}"]`).checked = true;
+        document.getElementById('notes').value = record.notes || '';
+        
+        this.openModal();
+      },
+      
+      // 打开模态框
+      openModal() {
+        const modal = document.getElementById('record-modal');
+        const modalContent = document.getElementById('modal-content');
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modalContent.classList.remove('scale-95', 'opacity-0');
+          modalContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+      },
+      
+      // 关闭记录模态框
+      closeRecordModal() {
+        const modal = document.getElementById('record-modal');
+        const modalContent = document.getElementById('modal-content');
+        
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+        
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 300);
+      },
+      
+      // 打开删除模态框
+      openDeleteModal(id) {
+        this.currentRecordId = id;
+        const modal = document.getElementById('delete-modal');
+        const modalContent = document.getElementById('delete-modal-content');
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modalContent.classList.remove('scale-95', 'opacity-0');
+          modalContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+      },
+      
+      // 关闭删除模态框
+      closeDeleteModal() {
+        const modal = document.getElementById('delete-modal');
+        const modalContent = document.getElementById('delete-modal-content');
+        
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+        
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 300);
+      },
+      
+      // 保存记录
+      saveRecord() {
+        const date = document.getElementById('record-date').value;
+        const bedTime = document.getElementById('bed-time').value;
+        const wakeUpTime = document.getElementById('wake-up-time').value;
+        const quality = document.querySelector('input[name="sleep-quality"]:checked').value;
+        const notes = document.getElementById('notes').value;
+        
+        // 计算睡眠时间
+        const bedTimeParts = bedTime.split(':').map(Number);
+        const wakeUpTimeParts = wakeUpTime.split(':').map(Number);
+        
+        let bedTimeDate = new Date();
+        bedTimeDate.setHours(bedTimeParts[0], bedTimeParts[1], 0);
+        
+        let wakeUpTimeDate = new Date();
+        wakeUpTimeDate.setHours(wakeUpTimeParts[0], wakeUpTimeParts[1], 0);
+        
+        // 如果入睡时间晚于起床时间，说明是跨天睡眠
+        if (bedTimeDate > wakeUpTimeDate) {
+          wakeUpTimeDate.setDate(wakeUpTimeDate.getDate() + 1);
+        }
+        
+        const sleepDurationMs = wakeUpTimeDate - bedTimeDate;
+        const hours = Math.floor(sleepDurationMs / (1000 * 60 * 60));
+        const minutes = Math.floor((sleepDurationMs % (1000 * 60 * 60)) / (1000 * 60));
+        const duration = `${hours}小时${minutes}分钟`;
+        
+        const newRecord = {
+          id: this.currentRecordId || Date.now().toString(),
+          date,
+          bedTime,
+          wakeUpTime,
+          duration,
+          quality: parseInt(quality),
+          notes
+        };
+        
+        if (this.currentRecordId) {
+          // 编辑现有记录
+          const index = this.records.findIndex(r => r.id === this.currentRecordId);
+          if (index !== -1) {
+            this.records[index] = newRecord;
+          }
+        } else {
+          // 添加新记录
+          this.records.push(newRecord);
+        }
+        
+        // 按日期排序
+        this.records.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        this.saveRecords();
+        this.renderRecords();
+        this.updateDashboard();
+        this.renderCharts();
+        this.updateSleepTips();
+        this.closeRecordModal();
+      },
+      
+      // 删除当前记录
+      deleteCurrentRecord() {
+        if (this.currentRecordId) {
+          this.records = this.records.filter(r => r.id !== this.currentRecordId);
+          this.saveRecords();
+          this.renderRecords();
+          this.updateDashboard();
+          this.renderCharts();
+          this.updateSleepTips();
+        }
+        this.closeDeleteModal();
+      },
+      
+      // 渲染睡眠记录表格
+      renderRecords() {
+        const recordsContainer = document.getElementById('sleep-records');
+        
+        if (this.records.length === 0) {
+          recordsContainer.innerHTML = `
+            <tr class="text-center">
+              <td colspan="7" class="px-6 py-12 text-gray-500">
+                <div class="flex flex-col items-center">
+                  <i class="fa fa-bed text-4xl mb-4 text-gray-300"></i>
+                  <p>暂无睡眠记录</p>
+                  <p class="text-sm">点击上方"添加睡眠记录"按钮开始记录你的睡眠</p>
+                </div>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        
+        let html = '';
+        this.records.forEach(record => {
+          const qualityStars = '★'.repeat(record.quality) + '☆'.repeat(5 - record.quality);
+          
+          html += `
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4 whitespace-nowrap">
+                ${new Date(record.date).toLocaleDateString('zh-CN')}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                ${record.bedTime}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                ${record.wakeUpTime}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                ${record.duration}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-yellow-500">${qualityStars}</span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="truncate max-w-xs">${record.notes || '-'}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex space-x-2">
+                  <button class="text-primary hover:text-primary/80" onclick="SleepTracker.openEditRecordModal('${record.id}')">
+                    <i class="fa fa-pencil"></i>
+                  </button>
+                  <button class="text-red-500 hover:text-red-600" onclick="SleepTracker.openDeleteModal('${record.id}')">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+        
+        recordsContainer.innerHTML = html;
+      },
+      
+      // 更新仪表盘数据
+      updateDashboard() {
+        if (this.records.length === 0) {
+          document.getElementById('avg-sleep-time').textContent = '--';
+          document.getElementById('avg-sleep-quality').textContent = '--';
+          document.getElementById('last-record-date').textContent = '--';
+          return;
+        }
+        
+        // 计算平均睡眠时间
+        const last7DaysRecords = this.getLastNDaysRecords(7);
+        if (last7DaysRecords.length === 0) return;
+        
+        let totalMinutes = 0;
+        last7DaysRecords.forEach(record => {
+          const durationParts = record.duration.match(/(\d+)小时(\d+)分钟/);
+          if (durationParts) {
+            totalMinutes += parseInt(durationParts[1]) * 60 + parseInt(durationParts[2]);
+          }
+        });
+        
+        const avgMinutes = totalMinutes / last7DaysRecords.length;
+        const avgHours = Math.floor(avgMinutes / 60);
+        const avgMins = Math.round(avgMinutes % 60);
+        document.getElementById('avg-sleep-time').textContent = `${avgHours}小时${avgMins}分钟`;
+        
+        // 计算平均睡眠质量
+        const totalQuality = last7DaysRecords.reduce((sum, record) => sum + record.quality, 0);
+        const avgQuality = (totalQuality / last7DaysRecords.length).toFixed(1);
+        document.getElementById('avg-sleep-quality').textContent = avgQuality + ' ★';
+        
+        // 最近记录日期
+        const lastRecordDate = new Date(this.records[0].date);
+        document.getElementById('last-record-date').textContent = lastRecordDate.toLocaleDateString('zh-CN');
+      },
+      
+      // 渲染图表
+      renderCharts(period = 'week') {
+        const records = this.records;
+        if (records.length === 0) return;
+        
+        let filteredRecords = [];
+        let labels = [];
+        let durationData = [];
+        let qualityData = [];
+        
+        if (period === 'week') {
+          // 过去7天
+          filteredRecords = this.getLastNDaysRecords(7);
+          labels = filteredRecords.map(record => new Date(record.date).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }));
+        } else if (period === 'month') {
+          // 过去30天，按周分组
+          filteredRecords = this.getLastNDaysRecords(30);
+          const weeks = {};
+          filteredRecords.forEach(record => {
+            const date = new Date(record.date);
+            const weekNumber = Math.floor((date.getDate() - 1) / 7) + 1;
+            const key = `${date.getMonth() + 1}月 第${weekNumber}周`;
+            if (!weeks[key]) {
+              weeks[key] = [];
+            }
+            weeks[key].push(record);
+          });
+          
+          labels = Object.keys(weeks);
+          labels.forEach(label => {
+            const weekRecords = weeks[label];
+            const avgDuration = this.calculateAverageDuration(weekRecords);
+            const avgQuality = weekRecords.reduce((sum, r) => sum + r.quality, 0) / weekRecords.length;
+            
+            durationData.push(avgDuration);
+            qualityData.push(avgQuality.toFixed(1));
+          });
+        } else if (period === 'year') {
+          // 过去12个月
+          const months = {};
+          const today = new Date();
+          const lastYear = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+          
+          filteredRecords = records.filter(record => {
+            const recordDate = new Date(record.date);
+            return recordDate >= lastYear && recordDate <= today;
+          });
+          
+          filteredRecords.forEach(record => {
+            const date = new Date(record.date);
+            const key = `${date.getFullYear()}年${date.getMonth() + 1}月`;
+            if (!months[key]) {
+              months[key] = [];
+            }
+            months[key].push(record);
+          });
+          
+          labels = Object.keys(months);
+          labels.forEach(label => {
+            const monthRecords = months[label];
+            const avgDuration = this.calculateAverageDuration(monthRecords);
+            const avgQuality = monthRecords.reduce((sum, r) => sum + r.quality, 0) / monthRecords.length;
+            
+            durationData.push(avgDuration);
+            qualityData.push(avgQuality.toFixed(1));
+          });
+        }
+        
+        if (period !== 'week') {
+          // 当不是周视图时，直接使用计算好的数据
+          this.renderSleepTrendChart(labels, durationData, qualityData);
+          return;
+        }
+        
+        // 周视图需要单独处理
+        labels = [];
+        durationData = [];
+        qualityData = [];
+        
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(today.getDate() - i);
+          const dateStr = date.toISOString().split('T')[0];
+          
+          labels.push(date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }));
+          
+          const record = filteredRecords.find(r => r.date === dateStr);
+          if (record) {
+            const durationParts = record.duration.match(/(\d+)小时(\d+)分钟/);
+            if (durationParts) {
+              const hours = parseInt(durationParts[1]) + parseInt(durationParts[2]) / 60;
+              durationData.push(hours.toFixed(1));
+            } else {
+              durationData.push(0);
+            }
+            qualityData.push(record.quality);
+          } else {
+            durationData.push(0);
+            qualityData.push(0);
+          }
+        }
+        
+        this.renderSleepTrendChart(labels, durationData, qualityData);
+        this.renderSleepQualityChart();
+        this.renderSleepDurationChart();
+      },
+      
+      // 渲染睡眠趋势图表
+      renderSleepTrendChart(labels, durationData, qualityData) {
+        const ctx = document.getElementById('sleepTrendChart').getContext('2d');
+        
+        // 销毁现有图表
+        if (window.sleepTrendChart) {
+        //   window.sleepTrendChart.destroy();
+        }
+        
+        window.sleepTrendChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: '睡眠时间 (小时)',
+                data: durationData,
+                backgroundColor: 'rgba(22, 93, 255, 0.6)',
+                borderColor: 'rgba(22, 93, 255, 1)',
+                borderWidth: 1,
+                yAxisID: 'y'
+              },
+              {
+                label: '睡眠质量 (星级)',
+                data: qualityData,
+                backgroundColor: 'rgba(255, 107, 132, 0.6)',
+                borderColor: 'rgba(255, 107, 132, 1)',
+                borderWidth: 1,
+                type: 'line',
+                fill: false,
+                tension: 0.4,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: '睡眠时间 (小时)'
+                }
+              },
+              y1: {
+                beginAtZero: true,
+                max: 5,
+                position: 'right',
+                title: {
+                  display: true,
+                  text: '睡眠质量 (星级)'
+                },
+                grid: {
+                  drawOnChartArea: false
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                position: 'top'
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false
+              }
+            },
+            interaction: {
+              mode: 'nearest',
+              axis: 'x',
+              intersect: false
+            }
+          }
+        });
+      },
+      
+      // 渲染睡眠质量分布图表
+      renderSleepQualityChart() {
+        const ctx = document.getElementById('sleepQualityChart').getContext('2d');
+        
+        // 销毁现有图表
+        if (window.sleepQualityChart) {
+        //   window.sleepQualityChart.destroy();
+        }
+        
+        // 计算各质量等级的数量
+        const qualityCounts = [0, 0, 0, 0, 0]; // 对应1-5星
+        this.records.forEach(record => {
+          qualityCounts[record.quality - 1]++;
+        });
+        
+        window.sleepQualityChart = new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: ['很差 (1★)', '较差 (2★)', '一般 (3★)', '良好 (4★)', '极佳 (5★)'],
+            datasets: [{
+              data: qualityCounts,
+              backgroundColor: [
+                'rgba(255, 99, 132, 0.7)',
+                'rgba(255, 159, 64, 0.7)',
+                'rgba(255, 205, 86, 0.7)',
+                'rgba(75, 192, 192, 0.7)',
+                'rgba(54, 175, 250, 0.7)'
+              ],
+              borderColor: [
+                'rgb(255, 99, 132)',
+                'rgb(255, 159, 64)',
+                'rgb(255, 205, 86)',
+                'rgb(75, 192, 192)',
+                'rgb(54, 175, 250)'
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right'
+              }
+            }
+          }
+        });
+      },
+      
+      // 渲染睡眠时间分布图表
+      renderSleepDurationChart() {
+        const ctx = document.getElementById('sleepDurationChart').getContext('2d');
+        
+        // 销毁现有图表
+        if (window.sleepDurationChart) {
+        //   window.sleepDurationChart.destroy();
+        }
+        
+        // 提取睡眠时间数据（小时）
+        const durationHours = this.records.map(record => {
+          const durationParts = record.duration.match(/(\d+)小时(\d+)分钟/);
+          if (durationParts) {
+            return parseInt(durationParts[1]) + parseInt(durationParts[2]) / 60;
+          }
+          return 0;
+        });
+        
+        // 计算分布
+        const bins = [
+          { label: '≤5小时', min: 0, max: 5 },
+          { label: '5-6小时', min: 5, max: 6 },
+          { label: '6-7小时', min: 6, max: 7 },
+          { label: '7-8小时', min: 7, max: 8 },
+          { label: '≥8小时', min: 8, max: Infinity }
+        ];
+        
+        const counts = bins.map(() => 0);
+        
+        durationHours.forEach(hours => {
+          for (let i = 0; i < bins.length; i++) {
+            if (hours >= bins[i].min && hours < bins[i].max) {
+              counts[i]++;
+              break;
+            }
+          }
+        });
+        
+        window.sleepDurationChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: bins.map(bin => bin.label),
+            datasets: [{
+              label: '天数',
+              data: counts,
+              backgroundColor: 'rgba(22, 93, 255, 0.6)',
+              borderColor: 'rgba(22, 93, 255, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: '天数'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+      },
+      
+      // 获取最近N天的记录
+      getLastNDaysRecords(n) {
+        const today = new Date();
+        return this.records.filter(record => {
+          const recordDate = new Date(record.date);
+          const diffTime = Math.abs(today - recordDate);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return diffDays <= n;
+        });
+      },
+      
+      // 计算平均睡眠时间
+      calculateAverageDuration(records) {
+        let totalMinutes = 0;
+        records.forEach(record => {
+          const durationParts = record.duration.match(/(\d+)小时(\d+)分钟/);
+          if (durationParts) {
+            totalMinutes += parseInt(durationParts[1]) * 60 + parseInt(durationParts[2]);
+          }
+        });
+        
+        const avgMinutes = totalMinutes / records.length;
+        const avgHours = Math.floor(avgMinutes / 60);
+        const remainingMinutes = Math.round(avgMinutes % 60);
+        
+        return `${avgHours}小时${remainingMinutes}分钟`;
+      },
+      
+      // 更新睡眠建议
+      updateSleepTips() {
+        const tipsContainer = document.getElementById('sleep-tips');
+        
+        if (this.records.length === 0) {
+          tipsContainer.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+              <p>添加睡眠记录后，我们将为你提供个性化的睡眠建议</p>
+            </div>
+          `;
+          return;
+        }
+        
+        // 基于平均睡眠时间和质量生成建议
+        const avgSleepTime = this.calculateAverageSleepTime();
+        const avgQuality = this.calculateAverageQuality();
+        
+        let tips = [];
+        
+        // 睡眠时间建议
+        if (avgSleepTime < 6) {
+          tips.push(`<li class="flex items-start mb-4">
+            <i class="fa fa-check-circle text-green-500 mt-1 mr-3"></i>
+            <div>
+              <p class="font-medium">增加睡眠时间</p>
+              <p class="text-gray-600 text-sm">你的平均睡眠时间较短，建议每晚保证7-9小时的睡眠，以维持身体和大脑的健康。</p>
+            </div>
+          </li>`);
+        } else if (avgSleepTime > 9) {
+          tips.push(`<li class="flex items-start mb-4">
+            <i class="fa fa-check-circle text-green-500 mt-1 mr-3"></i>
+            <div>
+              <p class="font-medium">调整睡眠时间</p>
+              <p class="text-gray-600 text-sm">你的平均睡眠时间较长，过多的睡眠可能会导致疲劳和头痛。建议保持7-9小时的规律睡眠时间。</p>
+            </div>
+          </li>`);
+        } else {
+          tips.push(`<li class="flex items-start mb-4">
+            <i class="fa fa-check-circle text-green-500 mt-1 mr-3"></i>
+            <div>
+              <p class="font-medium">睡眠时间适当</p>
+              <p class="text-gray-600 text-sm">你的平均睡眠时间处于健康范围内，继续保持规律的睡眠习惯。</p>
+            </div>
+          </li>`);
+        }
+        
+        // 睡眠质量建议
+        if (avgQuality < 3) {
+          tips.push(`<li class="flex items-start mb-4">
+            <i class="fa fa-check-circle text-green-500 mt-1 mr-3"></i>
+            <div>
+              <p class="font-medium">改善睡眠环境</p>
+              <p class="text-gray-600 text-sm">你的睡眠质量较低，建议保持卧室安静、黑暗和凉爽，避免晚上使用电子设备，并建立规律的睡眠习惯。</p>
+            </div>
+          </li>`);
+        } else if (avgQuality < 4) {
+          tips.push(`<li class="flex items-start mb-4">
+            <i class="fa fa-check-circle text-green-500 mt-1 mr-3"></i>
+            <div>
+              <p class="font-medium">优化睡眠习惯</p>
+              <p class="text-gray-600 text-sm">你的睡眠质量一般，可以尝试在睡前进行放松活动，如冥想或温水浴，避免晚餐过饱，并保持规律的睡眠时间。</p>
+            </div>
+          </li>`);
+        } else {
+          tips.push(`<li class="flex items-start mb-4">
+            <i class="fa fa-check-circle text-green-500 mt-1 mr-3"></i>
+            <div>
+              <p class="font-medium">良好的睡眠质量</p>
+              <p class="text-gray-600 text-sm">你的睡眠质量良好，继续保持健康的睡眠习惯和生活方式。</p>
+            </div>
+          </li>`);
+        }
+        
+        // 额外建议
+        tips.push(`<li class="flex items-start mb-4">
+          <i class="fa fa-check-circle text-green-500 mt-1 mr-3"></i>
+          <div>
+            <p class="font-medium">规律作息</p>
+            <p class="text-gray-600 text-sm">尽量每天在相同的时间上床睡觉和起床，即使在周末也不要有太大的时间差异。</p>
+          </div>
+        </li>`);
+        
+        tips.push(`<li class="flex items-start">
+          <i class="fa fa-check-circle text-green-500 mt-1 mr-3"></i>
+          <div>
+            <p class="font-medium">限制咖啡因和酒精</p>
+            <p class="text-gray-600 text-sm">晚上避免摄入咖啡因和酒精，这些物质可能会影响你的睡眠质量。</p>
+          </div>
+        </li>`);
+        
+        tipsContainer.innerHTML = `
+          <h4 class="font-semibold mb-4">睡眠建议</h4>
+          <ul class="space-y-4">
+            ${tips.join('')}
+          </ul>
+        `;
+      },
+      
+      // 计算平均睡眠时间（小时）
+      calculateAverageSleepTime() {
+        let totalMinutes = 0;
+        this.records.forEach(record => {
+          const durationParts = record.duration.match(/(\d+)小时(\d+)分钟/);
+          if (durationParts) {
+            totalMinutes += parseInt(durationParts[1]) * 60 + parseInt(durationParts[2]);
+          }
+        });
+        
+        return totalMinutes / (this.records.length * 60);
+      },
+      
+      // 计算平均睡眠质量
+      calculateAverageQuality() {
+        const totalQuality = this.records.reduce((sum, record) => sum + record.quality, 0);
+        return totalQuality / this.records.length;
+      }
+    };
+    
+    // 初始化应用
+    document.addEventListener('DOMContentLoaded', () => {
+      SleepTracker.init();
+      
+      // 平滑滚动
+      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+          e.preventDefault();
+          const target = document.querySelector(this.getAttribute('href'));
+          if (target) {
+            window.scrollTo({
+              top: target.offsetTop - 80,
+              behavior: 'smooth'
+            });
+            
+            // 如果是移动端，点击导航后关闭菜单
+            if (window.innerWidth < 768) {
+              document.getElementById('mobile-menu').classList.add('hidden');
+            }
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
+    

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>泉力以赴应用集合</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981'
+                    },
+                    borderRadius: {
+                        'none': '0px',
+                        'sm': '2px',
+                        DEFAULT: '4px',
+                        'md': '8px',
+                        'lg': '12px',
+                        'xl': '16px',
+                        '2xl': '20px',
+                        '3xl': '24px',
+                        'full': '9999px',
+                        'button': '4px'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            min-height: 1024px;
+        }
+        .tool-icon {
+            width: 64px;
+            height: 64px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            color: white;
+            background-color: #3B82F6;
+            border-radius: 16px;
+        }
+        .tool-card {
+            transition: all 0.2s ease;
+        }
+        .tool-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 标题栏 -->
+        <div class="flex justify-between items-center mb-12">
+            <h1 class="text-3xl font-bold text-gray-900">泉力以赴应用集合</h1>
+			<a href="about.html" target="_blank">
+            <button class="bg-primary text-white px-6 py-2 rounded-button whitespace-nowrap hover:bg-blue-700 transition-colors">
+                关于我们
+            </button>
+			</a>
+        </div>
+
+        <!-- 工具集合 -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <!-- 工具项 1 -->
+            <a href="roll_call.html" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">随机点名</span>
+            </a>
+
+            <!-- 工具项 2 -->
+            <a href="https://www.bodoudou.com/signin" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-secondary">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">挑战榜</span>
+            </a>
+
+            <!-- 工具项 3 -->
+            <a href="https://www.coze.cn/store/agent/7530524804273946651?bid=6h0ecqics900r" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-purple-500">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">人数统计</span>
+            </a>
+
+            <!-- 工具项 4 -->
+            <a href="https://www.coze.cn/store/agent/7528422653171318826?bid=6h0f14qt42g13&from=bots_card" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-yellow-500">
+                    <i class="fas fa-book"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">智能出题</span>
+            </a>
+
+            <!-- 工具项 5 -->
+            <a href="fitness.html" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-red-500">
+                    <i class="fas fa-running"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">健身记录</span>
+            </a>
+
+            <!-- 工具项 6 -->
+            <a href="foot.html" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-green-500">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">饮食追踪</span>
+            </a>
+
+            <!-- 工具项 7 -->
+            <a href="time.html" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-indigo-500">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">专注计时</span>
+            </a>
+
+            <!-- 工具项 8 -->
+            <a href="sleep.html" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-pink-500">
+                    <i class="fas fa-moon"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">睡眠监测</span>
+            </a>
+
+            <!-- 工具项 9 -->
+            <a href="weather.html" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-blue-400">
+                    <i class="fas fa-cloud-sun"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">天气查询</span>
+            </a>
+
+            <!-- 工具项 10 -->
+            <a href="#" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-teal-500">
+                    <i class="fas fa-map-marked-alt"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">旅行规划</span>
+            </a>
+
+            <!-- 工具项 11 -->
+            <a href="#" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-orange-500">
+                    <i class="fas fa-language"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">语言学习</span>
+            </a>
+
+            <!-- 工具项 12 -->
+            <a href="#" target="_blank" class="tool-card bg-white p-6 rounded-xl shadow-sm flex flex-col items-center">
+                <div class="tool-icon mb-4 bg-gray-600">
+                    <i class="fas fa-code"></i>
+                </div>
+                <span class="text-lg font-medium text-gray-800">代码片段</span>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

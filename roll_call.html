@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能随机点名系统</title>
+  <!-- 引入外部资源 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet"> -->
+  
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4361EE',
+            secondary: '#FF6B6B',
+            accent: '#FFD166',
+            dark: '#2B2D42',
+            light: '#F8F9FA'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          animation: {
+            'bounce-slow': 'bounce 3s infinite',
+            'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'spin-slow': 'spin 8s linear infinite',
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- 自定义样式 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .text-shadow {
+        text-shadow: 0 4px 8px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+      }
+      .gradient-bg {
+        background: linear-gradient(135deg, #4361EE 0%, #3A0CA3 100%);
+      }
+      .card-hover {
+        transition: all 0.3s ease;
+      }
+      .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+      }
+      .name-animation {
+        transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .name-animation:hover {
+        transform: scale(1.05);
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-sans text-dark">
+  <!-- 页面顶部 -->
+  <header class="gradient-bg text-white shadow-lg">
+    <div class="container mx-auto px-4 py-6">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="flex items-center space-x-3 mb-4 md:mb-0">
+          <i class="fa fa-random text-3xl text-accent animate-spin-slow"></i>
+          <h1 class="text-2xl md:text-3xl font-bold text-shadow">随机点名系统</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span class="hidden md:inline-flex items-center bg-white/20 px-4 py-2 rounded-full text-sm">
+            <i class="fa fa-users mr-2"></i>
+            <span id="student-count">0</span> 名学生
+          </span>
+          <button id="help-btn" class="bg-white/20 hover:bg-white/30 transition p-2 rounded-full">
+            <i class="fa fa-question"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-8">
+    <!-- 主要内容区 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- 左侧：名单上传和管理 -->
+      <div class="lg:col-span-1 space-y-6">
+        <!-- 上传文件区域 -->
+        <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+          <h2 class="text-xl font-bold mb-4 flex items-center">
+            <i class="fa fa-upload text-primary mr-2"></i>
+            上传学生名单
+          </h2>
+          <p class="text-gray-500 text-sm mb-4">支持TXT格式文件，每行一个学生姓名</p>
+          
+          <!-- 上传区域 -->
+          <div id="upload-area" class="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center hover:border-primary transition cursor-pointer">
+            <i class="fa fa-file-text-o text-4xl text-gray-300 mb-3"></i>
+            <p class="text-gray-500 mb-2">拖放文件到此处，或点击上传</p>
+            <p class="text-xs text-gray-400">支持 .txt 格式（示例：张三<br>李四<br>王五）</p>
+            <input type="file" id="file-upload" accept=".txt" class="hidden">
+            <button id="browse-btn" class="mt-4 bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-full transition">
+              选择文件
+            </button>
+          </div>
+          
+          <!-- 上传成功提示（默认隐藏） -->
+          <div id="upload-success" class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg hidden">
+            <div class="flex items-center">
+              <i class="fa fa-check-circle text-green-500 mr-2"></i>
+              <span class="text-green-700 text-sm">名单上传成功！</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 名单列表 -->
+        <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold flex items-center">
+              <i class="fa fa-list text-primary mr-2"></i>
+              学生名单
+            </h2>
+            <div class="flex space-x-2">
+              <button id="clear-list" class="text-gray-500 hover:text-red-500 transition p-1">
+                <i class="fa fa-trash"></i>
+              </button>
+              <button id="download-template" class="text-gray-500 hover:text-primary transition p-1">
+                <i class="fa fa-download"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- 名单容器 -->
+          <div id="student-list" class="max-h-96 overflow-y-auto pr-2 space-y-2 text-sm">
+            <div class="text-center text-gray-400 py-8">
+              <i class="fa fa-file-text-o text-4xl mb-3"></i>
+              <p>请上传学生名单文件</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 右侧：随机点名区域 -->
+      <div class="lg:col-span-2">
+        <div class="bg-white rounded-xl shadow-md p-6 md:p-8 h-full flex flex-col">
+          <h2 class="text-xl font-bold mb-6 flex items-center">
+            <i class="fa fa-bullhorn text-primary mr-2"></i>
+            随机点名
+          </h2>
+          
+          <!-- 点名显示区域 -->
+          <div class="flex-1 flex flex-col items-center justify-center mb-8">
+            <div id="name-display" class="w-full max-w-lg aspect-square rounded-full gradient-bg flex items-center justify-center shadow-xl mb-8 overflow-hidden relative">
+              <div class="absolute inset-0 bg-[url('img/800.jpg')] opacity-20"></div>
+              <div class="relative z-10 text-center p-6">
+                <p id="selected-name" class="text-3xl md:text-5xl font-bold text-white name-animation">等待点名</p>
+                <p id="name-hint" class="text-white/80 mt-2">点击下方按钮开始</p>
+              </div>
+            </div>
+            
+            <!-- 控制按钮 -->
+            <div class="flex flex-col sm:flex-row items-center gap-4">
+              <button id="roll-btn" class="bg-secondary hover:bg-secondary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-lg hover:shadow-xl transition flex items-center min-w-[180px] justify-center">
+                <i class="fa fa-play mr-2"></i> 开始点名
+              </button>
+              <button id="history-btn" class="bg-gray-100 hover:bg-gray-200 text-dark px-6 py-3 rounded-full transition flex items-center">
+                <i class="fa fa-history mr-2"></i> 历史记录
+              </button>
+            </div>
+          </div>
+          
+          <!-- 动画效果区 -->
+          <div class="grid grid-cols-4 gap-3 md:gap-6">
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+              <p class="text-gray-500 text-sm mb-1">点名次数</p>
+              <p id="roll-count" class="text-2xl font-bold text-primary">0</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+              <p class="text-gray-500 text-sm mb-1">最多被点</p>
+              <p id="most-rolled" class="text-2xl font-bold text-primary">-</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+              <p class="text-gray-500 text-sm mb-1">平均间隔</p>
+              <p id="avg-interval" class="text-2xl font-bold text-primary">-</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+              <p class="text-gray-500 text-sm mb-1">当前 streak</p>
+              <p id="current-streak" class="text-2xl font-bold text-primary">0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 历史记录弹窗 (默认隐藏) -->
+    <div id="history-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center">
+      <div id="history-plan" class="bg-white rounded-xl p-6 max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-bold">点名历史记录</h3>
+          <button id="close-history" class="text-gray-500 hover:text-dark">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+        <div id="history-list" class="flex-1 overflow-y-auto space-y-2 text-sm">
+          <div class="text-center text-gray-400 py-8">
+            <i class="fa fa-clock-o text-4xl mb-3"></i>
+            <p>暂无点名记录</p>
+          </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+          <button id="clear-history" class="text-red-500 hover:text-red-600 text-sm">
+            <i class="fa fa-trash mr-1"></i> 清空记录
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 帮助弹窗 (默认隐藏) -->
+    <div id="help-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center">
+      <div class="bg-white rounded-xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-bold">使用帮助</h3>
+          <button id="close-help" class="text-gray-500 hover:text-dark">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+        <div class="space-y-4 text-sm">
+          <div>
+            <h4 class="font-bold text-primary">1. 上传学生名单</h4>
+            <p>支持TXT格式文件，每行一个学生姓名。点击"选择文件"按钮或直接拖放文件到上传区域。</p>
+          </div>
+          <div>
+            <h4 class="font-bold text-primary">2. 开始点名</h4>
+            <p>点击"开始点名"按钮，系统会随机滚动显示学生姓名，再次点击停止并确定最终选中的学生。</p>
+          </div>
+          <div>
+            <h4 class="font-bold text-primary">3. 查看历史记录</h4>
+            <p>点击"历史记录"按钮可以查看之前点名的记录，包括时间和被点到的学生。</p>
+          </div>
+          <div>
+            <h4 class="font-bold text-primary">4. 下载模板</h4>
+            <p>点击名单区域的下载按钮，可以获取TXT格式的模板文件，按照模板填写学生姓名。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-dark text-white/70 py-6 mt-12">
+    <div class="container mx-auto px-4 text-center text-sm">
+      <p>随机点名系统 &copy; 2023 - 让课堂互动更有趣</p>
+      <p class="mt-2">使用提示：上传名单后即可开始随机点名，公平公正</p>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script>
+    // 全局变量
+    let students = [];
+    let isRolling = false;
+    let rollInterval;
+    let rollHistory = [];
+    let currentStreak = 0;
+    let lastSelected = null;
+
+    // DOM元素
+    const fileUpload = document.getElementById('file-upload');
+    const browseBtn = document.getElementById('browse-btn');
+    const uploadArea = document.getElementById('upload-area');
+    const studentList = document.getElementById('student-list');
+    const studentCount = document.getElementById('student-count');
+    const selectedName = document.getElementById('selected-name');
+    const nameHint = document.getElementById('name-hint');
+    const rollBtn = document.getElementById('roll-btn');
+    const rollCount = document.getElementById('roll-count');
+    const mostRolled = document.getElementById('most-rolled');
+    const avgInterval = document.getElementById('avg-interval');
+    const currentStreakEl = document.getElementById('current-streak');
+    const clearList = document.getElementById('clear-list');
+    const downloadTemplate = document.getElementById('download-template');
+    const historyBtn = document.getElementById('history-btn');
+    const historyModal = document.getElementById('history-modal');
+    const historyList = document.getElementById('history-list');
+    const historyPlan = document.getElementById('history-plan');
+    
+    const closeHistory = document.getElementById('close-history');
+    const clearHistory = document.getElementById('clear-history');
+    const helpBtn = document.getElementById('help-btn');
+    const helpModal = document.getElementById('help-modal');
+    const closeHelp = document.getElementById('close-help');
+    const uploadSuccess = document.getElementById('upload-success');
+
+    // 处理文件上传
+    function handleFileUpload() {
+      const file = fileUpload.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        // 读取文件内容并按行分割
+        const content = e.target.result;
+        students = content.split('\n')
+          .map(name => name.trim())
+          .filter(name => name.length > 0);
+        
+        // 保存到本地存储
+        saveToLocalStorage();
+        
+        // 更新UI
+        updateStudentList();
+        uploadSuccess.classList.remove('hidden');
+        
+        // 3秒后隐藏成功提示
+        setTimeout(() => {
+          uploadSuccess.classList.add('hidden');
+        }, 3000);
+      };
+      
+      reader.readAsText(file);
+    }
+
+    // 开始/停止随机点名
+    function toggleRoll() {
+      if (students.length === 0) {
+        alert('请先上传学生名单！');
+        return;
+      }
+      
+      if (isRolling) {
+        // 停止点名
+        clearInterval(rollInterval);
+        isRolling = false;
+        rollBtn.innerHTML = '<i class="fa fa-play mr-2"></i> 开始点名';
+        
+        // 记录本次点名结果
+        addToHistory(selectedName.textContent);
+        
+        // 添加选中动画效果
+        selectedName.classList.add('animate-bounce');
+        setTimeout(() => {
+          selectedName.classList.remove('animate-bounce');
+        }, 1000);
+      } else {
+        // 开始点名
+        isRolling = true;
+        rollBtn.innerHTML = '<i class="fa fa-stop mr-2"></i> 停止点名';
+        
+        // 随机切换名字
+        rollInterval = setInterval(() => {
+          const randomIndex = Math.floor(Math.random() * students.length);
+          selectedName.textContent = students[randomIndex];
+          
+          // 添加动画效果
+          selectedName.classList.add('scale-110');
+          setTimeout(() => {
+            selectedName.classList.remove('scale-110');
+          }, 50);
+        }, 100);
+      }
+    }
+
+    // 保存数据到本地存储
+    function saveToLocalStorage() {
+      localStorage.setItem('randomCallerStudents', JSON.stringify(students));
+      localStorage.setItem('randomCallerHistory', JSON.stringify(rollHistory));
+    }
+
+    // 从本地存储加载数据
+    function loadFromLocalStorage() {
+      const savedStudents = localStorage.getItem('randomCallerStudents');
+      const savedHistory = localStorage.getItem('randomCallerHistory');
+      
+      if (savedStudents) {
+        students = JSON.parse(savedStudents);
+      }
+      
+      if (savedHistory) {
+        rollHistory = JSON.parse(savedHistory);
+      }
+    }
+
+    // 更新学生列表UI
+    function updateStudentList() {
+      studentList.innerHTML = '';
+      studentCount.textContent = students.length;
+      
+      if (students.length === 0) {
+        studentList.innerHTML = `
+          <div class="text-center text-gray-400 py-8">
+            <i class="fa fa-file-text-o text-4xl mb-3"></i>
+            <p>请上传学生名单文件</p>
+          </div>
+        `;
+        return;
+      }
+      
+      students.forEach((name, index) => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition';
+        item.innerHTML = `
+          <span>${index + 1}. ${name}</span>
+          <button class="text-gray-400 hover:text-red-500 transition" onclick="removeStudent(${index})">
+            <i class="fa fa-times"></i>
+          </button>
+        `;
+        studentList.appendChild(item);
+      });
+    }
+
+    // 移除学生
+    function removeStudent(index) {
+      students.splice(index, 1);
+      saveToLocalStorage();
+      updateStudentList();
+    }
+
+    // 添加到历史记录
+    function addToHistory(name) {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString();
+      
+      rollHistory.unshift({
+        name,
+        time: timeString
+      });
+      
+      // 限制历史记录数量
+      if (rollHistory.length > 50) {
+        rollHistory.pop();
+      }
+      
+      saveToLocalStorage();
+      updateHistoryList();
+      updateStats();
+    }
+
+    // 更新历史记录UI
+    function updateHistoryList() {
+      historyList.innerHTML = '';
+      
+      if (rollHistory.length === 0) {
+        historyList.innerHTML = `
+          <div class="text-center text-gray-400 py-8">
+            <i class="fa fa-clock-o text-4xl mb-3"></i>
+            <p>暂无点名记录</p>
+          </div>
+        `;
+        return;
+      }
+      
+      rollHistory.forEach((item, index) => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+        historyItem.innerHTML = `
+          <div>
+            <span class="font-medium">${item.name}</span>
+            <span class="text-gray-400 text-xs ml-2">#${index + 1}</span>
+          </div>
+          <span class="text-gray-500 text-xs">${item.time}</span>
+        `;
+        historyList.appendChild(historyItem);
+      });
+    }
+
+    // 更新统计信息
+    function updateStats() {
+      // 点名次数
+      rollCount.textContent = rollHistory.length;
+      
+      // 最多被点
+      if (rollHistory.length > 0) {
+        const counts = {};
+        rollHistory.forEach(item => {
+          counts[item.name] = (counts[item.name] || 0) + 1;
+        });
+        
+        let maxCount = 0;
+        let mostName = '';
+        
+        for (const name in counts) {
+          if (counts[name] > maxCount) {
+            maxCount = counts[name];
+            mostName = name;
+          }
+        }
+        
+        mostRolled.textContent = `${mostName} (${maxCount}次)`;
+      }
+      
+      // 平均间隔（简化计算）
+      if (students.length > 0 && rollHistory.length > 0) {
+        const avg = Math.round(students.length / rollHistory.length * 10) / 10;
+        avgInterval.textContent = avg + '次/人';
+      }
+      
+      // 当前 streak（连续未被点到次数）
+      if (students.length > 0) {
+        // 计算每个学生的 streak
+        const lastSeen = {};
+        rollHistory.forEach((item, index) => {
+          lastSeen[item.name] = index;
+        });
+        
+        let maxStreak = 0;
+        let maxStreakName = '';
+        
+        students.forEach(name => {
+          const lastIndex = lastSeen[name] || -1;
+          const streak = rollHistory.length - lastIndex;
+          
+          if (streak > maxStreak) {
+            maxStreak = streak;
+            maxStreakName = name;
+          }
+        });
+        
+        currentStreakEl.textContent = `${maxStreakName} (${maxStreak}次)`;
+      }
+    }
+
+    // 清空学生名单
+    function clearStudentList() {
+      if (confirm('确定要清空学生名单吗？')) {
+        students = [];
+        saveToLocalStorage();
+        updateStudentList();
+      }
+    }
+
+    // 下载模板文件
+    function downloadTxtTemplate() {
+      const content = "张三\n李四\n王五\n赵六\n\n请按照此格式添加学生姓名，每行一个";
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '学生名单模板.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // 关闭历史记录弹窗
+    // closeHistory.addEventListener('click', () => {
+    // console.log(1)
+    //   historyModal.classList.add('hidden');
+    //   historyModal.classList.remove('flex');
+    // });
+
+    historyPlan.addEventListener('click', () => {
+       event.stopPropagation(); // 阻止事件冒泡传播
+       event.preventDefault(); // 阻止事件的默认行为
+      return false;
+    });
+
+    historyModal.addEventListener('click', () => {
+    console.log(1)
+      historyModal.classList.add('hidden');
+      historyModal.classList.remove('flex');
+    });
+
+    // 清空历史记录
+    clearHistory.addEventListener('click', () => {
+      console.log(1)
+      if (confirm('确定要清空所有历史记录吗？')) {
+        rollHistory = [];
+        saveToLocalStorage();
+        updateHistoryList();
+        updateStats();
+      }
+    });
+
+    // 关闭帮助弹窗
+    closeHelp.addEventListener('click', () => {
+      helpModal.classList.add('hidden');
+      helpModal.classList.remove('flex');
+    });
+
+    // 初始化
+    function init() {
+      // 尝试从本地存储加载数据
+      loadFromLocalStorage();
+      updateStudentList();
+      updateHistoryList();
+      updateStats();
+      
+      // 事件监听
+      browseBtn.addEventListener('click', () => fileUpload.click());
+      
+      fileUpload.addEventListener('change', handleFileUpload);
+      
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('border-primary');
+      });
+      
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('border-primary');
+      });
+      
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('border-primary');
+        if (e.dataTransfer.files.length) {
+          fileUpload.files = e.dataTransfer.files;
+          handleFileUpload();
+        }
+      });
+      
+      uploadArea.addEventListener('click', () => fileUpload.click());
+      
+      rollBtn.addEventListener('click', toggleRoll);
+      
+      clearList.addEventListener('click', clearStudentList);
+      
+      downloadTemplate.addEventListener('click', downloadTxtTemplate);
+      
+      historyBtn.addEventListener('click', () => {
+        historyModal.classList.remove('hidden');
+        historyModal.classList.add('flex');
+      });
+      
+      helpBtn.addEventListener('click', () => {
+        helpModal.classList.remove('hidden');
+        helpModal.classList.add('flex');
+      });
+    }
+
+    // 初始化应用
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>健身记录小工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#FF7D00',
+                        neutral: '#F5F7FA',
+                        dark: '#1D2129',
+                        success: '#36D399',
+                        warning: '#FFAB00',
+                        danger: '#F87272',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .btn-hover {
+                @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5;
+            }
+            .record-item {
+                @apply flex items-center justify-between p-4 bg-white rounded-lg mb-3 card-shadow transition-all duration-300 hover:shadow-md;
+            }
+            .input-focus {
+                @apply focus:ring-2 focus:ring-primary/50 focus:border-primary;
+            }
+            .slide-in {
+                animation: slideIn 0.3s ease forwards;
+            }
+            .slide-out {
+                animation: slideOut 0.3s ease forwards;
+            }
+            @keyframes slideIn {
+                from { transform: translateX(-20px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(20px); opacity: 0; }
+            }
+        }
+    </style>
+</head>
+<body class="bg-neutral font-inter min-h-screen flex flex-col">
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-primary flex items-center">
+                <i class="fa fa-heartbeat mr-2"></i>健身记录
+            </h1>
+            <div class="flex items-center space-x-3">
+                <button id="exportBtn" class="text-dark hover:text-primary transition-colors duration-300" title="导出记录">
+                    <i class="fa fa-download"></i>
+                </button>
+                <button id="importBtn" class="text-dark hover:text-primary transition-colors duration-300" title="导入记录">
+                    <i class="fa fa-upload"></i>
+                </button>
+                <button id="clearAllBtn" class="text-dark hover:text-danger transition-colors duration-300" title="清除所有记录">
+                    <i class="fa fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="max-w-3xl mx-auto">
+            <!-- 统计信息卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="bg-white rounded-xl p-5 card-shadow">
+                    <div class="text-sm text-gray-500 mb-1">今日记录</div>
+                    <div class="text-3xl font-bold text-dark" id="todayCount">0</div>
+                    <div class="text-xs text-success mt-1" id="todayDiff"><i class="fa fa-arrow-up"></i> 比昨天多 0 条</div>
+                </div>
+                <div class="bg-white rounded-xl p-5 card-shadow">
+                    <div class="text-sm text-gray-500 mb-1">总锻炼天数</div>
+                    <div class="text-3xl font-bold text-dark" id="totalDays">0</div>
+                    <div class="text-xs text-primary mt-1"><i class="fa fa-fire"></i> 持续坚持中</div>
+                </div>
+                <div class="bg-white rounded-xl p-5 card-shadow">
+                    <div class="text-sm text-gray-500 mb-1">本周目标</div>
+                    <div class="text-3xl font-bold text-dark" id="weeklyGoal">0/5</div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div class="bg-secondary h-2 rounded-full" id="goalProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 添加记录表单 -->
+            <div class="bg-white rounded-xl p-6 mb-8 card-shadow">
+                <h2 class="text-xl font-semibold mb-4 text-dark">添加健身记录</h2>
+                <form id="addRecordForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="exerciseType" class="block text-sm font-medium text-gray-700 mb-1">锻炼类型</label>
+                            <select id="exerciseType" class="w-full px-3 py-2 border border-gray-300 rounded-lg input-focus">
+                                <option value="力量训练">力量训练</option>
+                                <option value="有氧运动">有氧运动</option>
+                                <option value="瑜伽">瑜伽</option>
+                                <option value="游泳">游泳</option>
+                                <option value="跑步">跑步</option>
+                                <option value="骑行">骑行</option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">时长 (分钟)</label>
+                            <input type="number" id="duration" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg input-focus">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="intensity" class="block text-sm font-medium text-gray-700 mb-1">强度</label>
+                            <select id="intensity" class="w-full px-3 py-2 border border-gray-300 rounded-lg input-focus">
+                                <option value="低强度">低强度</option>
+                                <option value="中等强度">中等强度</option>
+                                <option value="高强度">高强度</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="date" class="block text-sm font-medium text-gray-700 mb-1">日期</label>
+                            <input type="date" id="date" value="" class="w-full px-3 py-2 border border-gray-300 rounded-lg input-focus">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                        <textarea id="notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg input-focus" placeholder="记录你的感受或详细内容..."></textarea>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg btn-hover flex items-center">
+                            <i class="fa fa-plus-circle mr-2"></i>添加记录
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 记录列表 -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-dark">健身记录列表</h2>
+                    <div class="relative">
+                        <input type="text" id="searchInput" placeholder="搜索记录..." class="pl-9 pr-3 py-2 border border-gray-300 rounded-lg input-focus w-64">
+                        <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <div class="space-y-2 max-h-[500px] overflow-y-auto pr-2" id="recordsList">
+                    <!-- 记录将通过JavaScript动态添加 -->
+                    <div class="text-center py-10 text-gray-500" id="emptyState">
+                        <i class="fa fa-folder-open-o text-4xl mb-3 text-gray-300"></i>
+                        <p>暂无健身记录</p>
+                        <p class="text-sm mt-1">添加你的第一条健身记录，开始追踪你的健身旅程</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-white py-6 mt-12">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-sm">© 2025 健身记录小工具. 保持健康，坚持锻炼!</p>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">
+                        <i class="fa fa-github"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">
+                        <i class="fa fa-twitter"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">
+                        <i class="fa fa-instagram"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 确认删除模态框 -->
+    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-dark">确认删除</h3>
+                <button id="closeDeleteModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <p class="text-gray-700 mb-6">你确定要删除这条健身记录吗？</p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancelDelete" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-300">
+                    取消
+                </button>
+                <button id="confirmDelete" class="px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/90 transition-colors duration-300">
+                    确认删除
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知提示 -->
+    <div id="notification" class="fixed top-4 right-4 bg-dark text-white px-4 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 flex items-center z-50">
+        <i id="notificationIcon" class="fa fa-check-circle mr-2"></i>
+        <span id="notificationMessage">操作成功</span>
+    </div>
+
+    <script>
+        // DOM元素
+        const addRecordForm = document.getElementById('addRecordForm');
+        const recordsList = document.getElementById('recordsList');
+        const emptyState = document.getElementById('emptyState');
+        const deleteModal = document.getElementById('deleteModal');
+        const modalContent = document.getElementById('modalContent');
+        const closeDeleteModal = document.getElementById('closeDeleteModal');
+        const cancelDelete = document.getElementById('cancelDelete');
+        const confirmDelete = document.getElementById('confirmDelete');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const searchInput = document.getElementById('searchInput');
+        const todayCountEl = document.getElementById('todayCount');
+        const totalDaysEl = document.getElementById('totalDays');
+        const weeklyGoalEl = document.getElementById('weeklyGoal');
+        const goalProgressEl = document.getElementById('goalProgress');
+        const todayDiffEl = document.getElementById('todayDiff');
+        const notification = document.getElementById('notification');
+        const notificationIcon = document.getElementById('notificationIcon');
+        const notificationMessage = document.getElementById('notificationMessage');
+
+        // 存储要删除的记录ID
+        let recordIdToDelete = null;
+
+        // 设置默认日期为今天
+        document.getElementById('date').valueAsDate = new Date();
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', () => {
+            renderRecords();
+            updateStatistics();
+        });
+
+        // 添加记录表单提交事件
+        addRecordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const exerciseType = document.getElementById('exerciseType').value;
+            const duration = document.getElementById('duration').value;
+            const intensity = document.getElementById('intensity').value;
+            const date = document.getElementById('date').value;
+            const notes = document.getElementById('notes').value;
+
+            // 验证必填字段
+            if (!duration || !date) {
+                showNotification('请填写时长和日期', 'warning');
+                return;
+            }
+
+            // 创建新记录
+            const newRecord = {
+                id: Date.now().toString(),
+                exerciseType,
+                duration: parseInt(duration),
+                intensity,
+                date,
+                notes
+            };
+
+            // 添加到记录列表
+            addRecord(newRecord);
+            
+            // 重置表单
+            addRecordForm.reset();
+            document.getElementById('date').valueAsDate = new Date();
+            
+            // 更新统计信息
+            updateStatistics();
+            
+            // 显示成功通知
+            showNotification('健身记录添加成功', 'success');
+        });
+
+        // 打开删除确认模态框
+        function openDeleteModal(id) {
+            recordIdToDelete = id;
+            deleteModal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        // 关闭删除确认模态框
+        function closeDeleteModalFunc() {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                deleteModal.classList.add('hidden');
+                recordIdToDelete = null;
+            }, 300);
+        }
+
+        // 确认删除记录
+        confirmDelete.addEventListener('click', () => {
+            if (recordIdToDelete) {
+                deleteRecord(recordIdToDelete);
+                closeDeleteModalFunc();
+                showNotification('健身记录已删除', 'success');
+            }
+        });
+
+        // 关闭模态框事件
+        closeDeleteModal.addEventListener('click', closeDeleteModalFunc);
+        cancelDelete.addEventListener('click', closeDeleteModalFunc);
+        deleteModal.addEventListener('click', (e) => {
+            if (e.target === deleteModal) {
+                closeDeleteModalFunc();
+            }
+        });
+
+        // 清除所有记录
+        clearAllBtn.addEventListener('click', () => {
+            if (confirm('确定要删除所有健身记录吗？此操作不可恢复。')) {
+                clearAllRecords();
+                updateStatistics();
+                showNotification('所有健身记录已清除', 'success');
+            }
+        });
+
+        // 导出记录
+        exportBtn.addEventListener('click', () => {
+            const records = getRecords();
+            if (records.length === 0) {
+                showNotification('没有记录可导出', 'warning');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(records, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fitness_records_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('记录导出成功', 'success');
+        });
+
+        // 导入记录
+        importBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const records = JSON.parse(event.target.result);
+                        if (Array.isArray(records)) {
+                            if (confirm('导入将替换现有记录，确定要继续吗？')) {
+                                setRecords(records);
+                                renderRecords();
+                                updateStatistics();
+                                showNotification('记录导入成功', 'success');
+                            }
+                        } else {
+                            showNotification('无效的记录文件', 'error');
+                        }
+                    } catch (error) {
+                        showNotification('导入文件时出错: ' + error.message, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        });
+
+        // 搜索记录
+        searchInput.addEventListener('input', () => {
+            renderRecords();
+        });
+
+        // 获取所有记录
+        function getRecords() {
+            const recordsJson = document.cookie.replace(/(?:(?:^|.*;\s*)fitnessRecords\s*=\s*([^;]*).*$)|^.*$/, '$1');
+            return recordsJson ? JSON.parse(decodeURIComponent(recordsJson)) : [];
+        }
+
+        // 设置记录
+        function setRecords(records) {
+            const recordsJson = encodeURIComponent(JSON.stringify(records));
+            // 存储10年后过期
+            const expirationDate = new Date();
+            expirationDate.setFullYear(expirationDate.getFullYear() + 10);
+            document.cookie = `fitnessRecords=${recordsJson}; expires=${expirationDate.toUTCString()}; path=/`;
+        }
+
+        // 添加记录
+        function addRecord(record) {
+            const records = getRecords();
+            records.push(record);
+            setRecords(records);
+            renderRecords();
+        }
+
+        // 删除记录
+        function deleteRecord(id) {
+            let records = getRecords();
+            const recordElement = document.querySelector(`[data-id="${id}"]`);
+            
+            // 添加删除动画
+            if (recordElement) {
+                recordElement.classList.add('slide-out');
+                setTimeout(() => {
+                    records = records.filter(record => record.id !== id);
+                    setRecords(records);
+                    renderRecords();
+                }, 300);
+            } else {
+                // 如果找不到元素，直接删除
+                records = records.filter(record => record.id !== id);
+                setRecords(records);
+                renderRecords();
+            }
+        }
+
+        // 清除所有记录
+        function clearAllRecords() {
+            setRecords([]);
+            renderRecords();
+        }
+
+        // 渲染记录列表
+        function renderRecords() {
+            const records = getRecords();
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            // 过滤记录
+            const filteredRecords = records.filter(record => {
+                return (
+                    record.exerciseType.toLowerCase().includes(searchTerm) ||
+                    record.notes.toLowerCase().includes(searchTerm) ||
+                    record.intensity.toLowerCase().includes(searchTerm) ||
+                    new Date(record.date).toLocaleDateString('zh-CN').includes(searchTerm)
+                );
+            });
+            
+            // 清空列表
+            recordsList.innerHTML = '';
+            
+            // 显示空状态或记录
+            if (filteredRecords.length === 0) {
+                recordsList.appendChild(emptyState);
+            } else {
+                // 按日期排序（最新的在前）
+                filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                // 添加记录项
+                filteredRecords.forEach((record, index) => {
+                    const recordItem = createRecordElement(record);
+                    recordsList.appendChild(recordItem);
+                    
+                    // 添加进入动画
+                    setTimeout(() => {
+                        recordItem.style.opacity = '1';
+                        recordItem.style.transform = 'translateX(0)';
+                    }, 50 * index);
+                });
+            }
+        }
+
+        // 创建记录元素
+        function createRecordElement(record) {
+            const item = document.createElement('div');
+            item.className = 'record-item opacity-0 transform translate-x-4 transition-all duration-300';
+            item.dataset.id = record.id;
+            
+            // 根据锻炼类型设置图标
+            let exerciseIcon = 'fa-heartbeat';
+            switch(record.exerciseType) {
+                case '力量训练':
+                    exerciseIcon = 'fa-dumbbell';
+                    break;
+                case '有氧运动':
+                    exerciseIcon = 'fa-running';
+                    break;
+                case '瑜伽':
+                    exerciseIcon = 'fa-child';
+                    break;
+                case '游泳':
+                    exerciseIcon = 'fa-swimmer';
+                    break;
+                case '跑步':
+                    exerciseIcon = 'fa-running';
+                    break;
+                case '骑行':
+                    exerciseIcon = 'fa-bicycle';
+                    break;
+            }
+            
+            // 根据强度设置颜色
+            let intensityColor = 'text-gray-500';
+            switch(record.intensity) {
+                case '低强度':
+                    intensityColor = 'text-success';
+                    break;
+                case '中等强度':
+                    intensityColor = 'text-primary';
+                    break;
+                case '高强度':
+                    intensityColor = 'text-danger';
+                    break;
+            }
+            
+            // 格式化日期
+            const formattedDate = new Date(record.date).toLocaleDateString('zh-CN');
+            
+            item.innerHTML = `
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-3">
+                            <i class="fa ${exerciseIcon}"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium text-dark">${record.exerciseType}</h3>
+                            <div class="text-sm text-gray-500">
+                                ${formattedDate} · <span class="${intensityColor}">${record.intensity}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ml-auto flex items-center">
+                        <div class="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium mr-4">
+                            ${record.duration} 分钟
+                        </div>
+                        <button class="text-gray-400 hover:text-danger transition-colors duration-300 delete-btn" onclick="openDeleteModal('${record.id}')" title="删除记录">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                ${record.notes ? `
+                    <div class="mt-3 pt-3 border-t border-gray-100 w-full">
+                        <p class="text-sm text-gray-600 italic">${record.notes}</p>
+                    </div>
+                ` : ''}
+            `;
+            
+            return item;
+        }
+
+        // 更新统计信息
+        function updateStatistics() {
+            const records = getRecords();
+            
+            // 今日记录数
+            const today = new Date().toISOString().split('T')[0];
+            const todayRecords = records.filter(record => record.date === today);
+            todayCountEl.textContent = todayRecords.length;
+            
+            // 总锻炼天数
+            const uniqueDays = [...new Set(records.map(record => record.date))];
+            totalDaysEl.textContent = uniqueDays.length;
+            
+            // 本周目标完成情况
+            const todayDate = new Date();
+            const startOfWeek = new Date(todayDate);
+            startOfWeek.setDate(todayDate.getDate() - todayDate.getDay());
+            const endOfWeek = new Date(todayDate);
+            endOfWeek.setDate(todayDate.getDate() + (6 - todayDate.getDay()));
+            
+            const weeklyRecords = records.filter(record => {
+                const recordDate = new Date(record.date);
+                return recordDate >= startOfWeek && recordDate <= endOfWeek;
+            });
+            
+            const weeklyRecordDays = [...new Set(weeklyRecords.map(record => record.date))];
+            const weeklyRecordCount = weeklyRecordDays.length;
+            const weeklyGoal = 5; // 每周目标5天
+            
+            weeklyGoalEl.textContent = `${weeklyRecordCount}/${weeklyGoal}`;
+            goalProgressEl.style.width = `${(weeklyRecordCount / weeklyGoal) * 100}%`;
+            
+            // 更新昨日对比
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            const yesterdayRecords = records.filter(record => record.date === yesterdayStr);
+            
+            const diff = todayRecords.length - yesterdayRecords.length;
+            if (diff > 0) {
+                todayDiffEl.innerHTML = `<i class="fa fa-arrow-up"></i> 比昨天多 ${diff} 条`;
+                todayDiffEl.className = 'text-xs text-success mt-1';
+            } else if (diff < 0) {
+                todayDiffEl.innerHTML = `<i class="fa fa-arrow-down"></i> 比昨天少 ${Math.abs(diff)} 条`;
+                todayDiffEl.className = 'text-xs text-danger mt-1';
+            } else {
+                todayDiffEl.innerHTML = `<i class="fa fa-minus"></i> 与昨天相同`;
+                todayDiffEl.className = 'text-xs text-gray-500 mt-1';
+            }
+        }
+
+        // 显示通知
+        function showNotification(message, type = 'success') {
+            // 设置通知类型和图标
+            notificationMessage.textContent = message;
+            
+            if (type === 'success') {
+                notification.className = 'fixed top-4 right-4 bg-success text-white px-4 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 flex items-center z-50';
+                notificationIcon.className = 'fa fa-check-circle mr-2';
+            } else if (type === 'warning') {
+                notification.className = 'fixed top-4 right-4 bg-warning text-white px-4 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 flex items-center z-50';
+                notificationIcon.className = 'fa fa-exclamation-triangle mr-2';
+            } else if (type === 'error') {
+                notification.className = 'fixed top-4 right-4 bg-danger text-white px-4 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 flex items-center z-50';
+                notificationIcon.className = 'fa fa-times-circle mr-2';
+            }
+            
+            // 显示通知
+            notification.classList.remove('translate-x-full');
+            
+            // 3秒后隐藏通知
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+            }, 3000);
+        }
+
+        // 添加平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+    
