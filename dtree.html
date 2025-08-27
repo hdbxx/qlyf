@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策树构建仿真平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#10B981',
+                        neutral: '#64748B',
+                        light: '#F1F5F9',
+                        dark: '#1E293B'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .node-shadow {
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+            .node-selected {
+                box-shadow: 0 0 0 2px #4F46E5, 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+            .connection-path {
+                stroke: #94A3B8;
+                stroke-width: 2;
+                fill: none;
+                transition: all 0.2s ease;
+            }
+            .connection-path-selected {
+                stroke: #4F46E5;
+                stroke-width: 3;
+            }
+            .connection-handle {
+                transition: all 0.2s ease;
+                opacity: 0;
+            }
+            .node-group:hover .connection-handle {
+                opacity: 1;
+            }
+            .connection-label {
+                font-size: 12px;
+                fill: #64748B;
+                pointer-events: none;
+            }
+            .connection-label-selected {
+                fill: #4F46E5;
+                font-weight: 500;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col">
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fa fa-sitemap text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-primary">决策树构建仿真平台</h1>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button id="new-tree" class="flex items-center gap-1 px-3 py-2 rounded-md bg-light text-dark hover:bg-gray-200 transition-colors">
+                    <i class="fa fa-file-o"></i>
+                    <span class="hidden sm:inline">新建</span>
+                </button>
+                <button id="save-tree" class="flex items-center gap-1 px-3 py-2 rounded-md bg-light text-dark hover:bg-gray-200 transition-colors">
+                    <i class="fa fa-save"></i>
+                    <span class="hidden sm:inline">保存</span>
+                </button>
+                <button id="export-tree" class="flex items-center gap-1 px-3 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition-colors">
+                    <i class="fa fa-download"></i>
+                    <span class="hidden sm:inline">导出</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 container mx-auto px-4 py-6">
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- 左侧工具栏 -->
+            <div class="lg:w-1/5 bg-white rounded-lg shadow-sm p-4 h-fit">
+                <h2 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fa fa-wrench text-primary mr-2"></i>节点工具
+                </h2>
+                
+                <!-- 节点类型 -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium text-neutral mb-3">节点类型</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="node-template p-3 bg-primary/10 border-2 border-primary rounded-lg text-center cursor-move hover:bg-primary/20 transition-all" data-type="decision">
+                            <i class="fa fa-question-circle text-primary text-xl mb-1"></i>
+                            <p class="text-xs font-medium">决策节点</p>
+                        </div>
+                        <div class="node-template p-3 bg-secondary/10 border-2 border-secondary rounded-lg text-center cursor-move hover:bg-secondary/20 transition-all" data-type="result">
+                            <i class="fa fa-check-circle text-secondary text-xl mb-1"></i>
+                            <p class="text-xs font-medium">结果节点</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="space-y-3 mb-6">
+                    <button id="add-root" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition-colors">
+                        <i class="fa fa-plus"></i> 添加根节点
+                    </button>
+                    <button id="clear-canvas" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-light text-dark hover:bg-gray-200 transition-colors border border-gray-200">
+                        <i class="fa fa-trash"></i> 清空画布
+                    </button>
+                </div>
+                
+                <!-- 节点编辑面板 -->
+                <div id="node-editor" class="border-t border-gray-200 pt-4 hidden">
+                    <h3 class="text-sm font-medium text-neutral mb-3">节点编辑</h3>
+                    
+                    <input type="hidden" id="current-node-id">
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">节点名称 *</label>
+                            <input type="text" id="node-name" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">节点描述</label>
+                            <textarea id="node-description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+                        </div>
+                        
+                        <!-- 决策节点选项 -->
+                        <div id="decision-options" class="hidden">
+                            <label class="block text-xs text-gray-500 mb-1">决策选项</label>
+                            <div id="options-container">
+                                <div class="option-item flex items-center gap-2 mb-2">
+                                    <input type="text" class="option-text flex-1 px-3 py-1.5 border border-gray-300 rounded-md text-sm" placeholder="选项内容">
+                                    <button type="button" class="remove-option p-1.5 text-red-500 hover:bg-red-50 rounded-full transition-colors">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" id="add-option" class="w-full py-1.5 text-xs bg-light text-dark rounded-md hover:bg-gray-200 transition-colors mt-1 flex items-center justify-center gap-1">
+                                <i class="fa fa-plus"></i> 添加选项
+                            </button>
+                        </div>
+                        
+                        <div class="flex gap-2 pt-2 border-t border-gray-100">
+                            <button id="save-node" class="flex-1 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90 transition-colors">
+                                保存
+                            </button>
+                            <button id="delete-node" class="flex-1 py-2 bg-red-500 text-white text-sm rounded-md hover:bg-red-600 transition-colors">
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 操作指南 -->
+                <div class="border-t border-gray-200 pt-4 mt-4">
+                    <h3 class="text-sm font-medium text-neutral mb-3">操作指南</h3>
+                    <ul class="text-xs text-gray-500 space-y-2">
+                        <li class="flex items-start gap-2">
+                            <i class="fa fa-arrows-v mt-0.5 text-primary"></i>
+                            <span>从节点上下连接点拖动创建连接</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="fa fa-mouse-pointer mt-0.5 text-primary"></i>
+                            <span>点击连接选中，按删除键删除</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="fa fa-arrows mt-0.5 text-primary"></i>
+                            <span>拖动节点调整位置</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="fa fa-square-o mt-0.5 text-primary"></i>
+                            <span>点击空白处取消选择</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 右侧画布区域 -->
+            <div class="lg:w-4/5 bg-white rounded-lg shadow-sm p-4 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold flex items-center">
+                        <i class="fa fa-tree text-primary mr-2"></i>决策树画布
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <button id="zoom-in" class="p-2 bg-light rounded-md hover:bg-gray-200 transition-colors" title="放大">
+                            <i class="fa fa-search-plus"></i>
+                        </button>
+                        <button id="zoom-out" class="p-2 bg-light rounded-md hover:bg-gray-200 transition-colors" title="缩小">
+                            <i class="fa fa-search-minus"></i>
+                        </button>
+                        <button id="zoom-reset" class="p-2 bg-light rounded-md hover:bg-gray-200 transition-colors" title="重置视图">
+                            <i class="fa fa-compress"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="canvas-container" class="flex-1 bg-gray-50 rounded-md border border-gray-200 relative overflow-hidden min-h-[600px]">
+                    <!-- 空状态提示 -->
+                    <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                        <i class="fa fa-sitemap text-5xl mb-4 opacity-30"></i>
+                        <p class="text-center max-w-md">从左侧添加根节点开始<br>或拖动节点类型到画布上</p>
+                    </div>
+                    
+                    <!-- 决策树 SVG 画布 -->
+                    <svg id="tree-svg" class="w-full h-full"></svg>
+                    
+                    <!-- 临时连接线 -->
+                    <svg id="temp-connection" class="absolute top-0 left-0 w-full h-full pointer-events-none"></svg>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 通知提示 -->
+    <div id="notification" class="fixed bottom-4 right-4 px-4 py-3 rounded-md shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center max-w-xs">
+        <i id="notification-icon" class="mr-2 text-lg"></i>
+        <span id="notification-message"></span>
+    </div>
+
+    <script>
+        // 决策树数据结构
+        let decisionTree = {
+            nodes: [],       // 所有节点
+            connections: []  // 节点间连接
+        };
+        
+        // 当前选中的元素
+        let selectedNodeId = null;
+        let selectedConnectionId = null;
+        
+        // 视图控制变量
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        let isPanning = false;
+        let panStart = { x: 0, y: 0 };
+        
+        // 连接创建状态
+        let creatingConnection = false;
+        let connectionSource = {
+            nodeId: null,
+            handle: null // 'top' 或 'bottom'
+        };
+        let tempLine = null;
+        
+        // DOM 元素引用
+        const treeSvg = document.getElementById('tree-svg');
+        const tempConnection = document.getElementById('temp-connection');
+        const canvasContainer = document.getElementById('canvas-container');
+        const emptyState = document.getElementById('empty-state');
+        const nodeEditor = document.getElementById('node-editor');
+        const currentNodeId = document.getElementById('current-node-id');
+        const nodeName = document.getElementById('node-name');
+        const nodeDescription = document.getElementById('node-description');
+        const decisionOptions = document.getElementById('decision-options');
+        const optionsContainer = document.getElementById('options-container');
+        const addOption = document.getElementById('add-option');
+        const saveNode = document.getElementById('save-node');
+        const deleteNode = document.getElementById('delete-node');
+        const addRoot = document.getElementById('add-root');
+        const clearCanvas = document.getElementById('clear-canvas');
+        const newTree = document.getElementById('new-tree');
+        const saveTree = document.getElementById('save-tree');
+        const exportTree = document.getElementById('export-tree');
+        const zoomIn = document.getElementById('zoom-in');
+        const zoomOut = document.getElementById('zoom-out');
+        const zoomReset = document.getElementById('zoom-reset');
+        const notification = document.getElementById('notification');
+        const notificationIcon = document.getElementById('notification-icon');
+        const notificationMessage = document.getElementById('notification-message');
+        
+        // 初始化应用
+        function init() {
+            setupEventListeners();
+            checkEmptyState();
+        }
+        
+        // 设置所有事件监听器
+        function setupEventListeners() {
+            // 根节点添加
+            addRoot.addEventListener('click', addRootNode);
+            
+            // 清空画布和新建
+            clearCanvas.addEventListener('click', clearAll);
+            newTree.addEventListener('click', createNewTree);
+            
+            // 保存和导出
+            saveTree.addEventListener('click', saveToLocalStorage);
+            exportTree.addEventListener('click', exportAsJson);
+            
+            // 节点编辑
+            saveNode.addEventListener('click', saveNodeChanges);
+            deleteNode.addEventListener('click', deleteSelectedNode);
+            addOption.addEventListener('click', addNewOption);
+            
+            // 选项删除事件委托
+            optionsContainer.addEventListener('click', (e) => {
+                if (e.target.closest('.remove-option')) {
+                    const optionItem = e.target.closest('.option-item');
+                    optionItem.remove();
+                }
+            });
+            
+            // 缩放控制
+            zoomIn.addEventListener('click', () => zoom(0.1));
+            zoomOut.addEventListener('click', () => zoom(-0.1));
+            zoomReset.addEventListener('click', resetZoom);
+            
+            // 画布拖动
+            canvasContainer.addEventListener('mousedown', startPan);
+            document.addEventListener('mousemove', pan);
+            document.addEventListener('mouseup', endPan);
+            canvasContainer.addEventListener('wheel', handleWheelZoom);
+            
+            // 空白处点击取消选择
+            treeSvg.addEventListener('click', (e) => {
+                if (e.target === treeSvg) {
+                    deselectAll();
+                }
+            });
+            
+            // 键盘事件 - 删除连接
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Delete' && selectedConnectionId) {
+                    deleteSelectedConnection();
+                }
+            });
+            
+            // 节点拖放功能
+            setupNodeDragAndDrop();
+            
+            // 窗口大小变化时重绘
+            window.addEventListener('resize', renderTree);
+        }
+        
+        // 设置节点拖放功能
+        function setupNodeDragAndDrop() {
+            const nodeTemplates = document.querySelectorAll('.node-template');
+            
+            // 使模板可拖动
+            nodeTemplates.forEach(template => {
+                template.setAttribute('draggable', true);
+                
+                template.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', template.dataset.type);
+                    template.classList.add('opacity-50');
+                });
+                
+                template.addEventListener('dragend', () => {
+                    template.classList.remove('opacity-50');
+                });
+            });
+            
+            // 画布接收拖放
+            canvasContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                canvasContainer.classList.add('bg-gray-100');
+            });
+            
+            canvasContainer.addEventListener('dragleave', () => {
+                canvasContainer.classList.remove('bg-gray-100');
+            });
+            
+            canvasContainer.addEventListener('drop', (e) => {
+                e.preventDefault();
+                canvasContainer.classList.remove('bg-gray-100');
+                
+                const nodeType = e.dataTransfer.getData('text/plain');
+                const rect = canvasContainer.getBoundingClientRect();
+                
+                // 计算相对于画布的位置（考虑缩放和平移）
+                const x = (e.clientX - rect.left - translateX) / scale;
+                const y = (e.clientY - rect.top - translateY) / scale;
+                
+                addNode(nodeType, x, y);
+            });
+        }
+        
+        // 添加根节点
+        function addRootNode() {
+            if (decisionTree.nodes.length > 0) {
+                if (!confirm('已存在节点，添加新根节点将清除现有决策树。继续？')) {
+                    return;
+                }
+                clearAll(false);
+            }
+            
+            const rect = canvasContainer.getBoundingClientRect();
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            const nodeId = addNode('decision', centerX, centerY, '根决策', '请编辑此决策节点');
+            selectNode(nodeId);
+            showNotification('success', '根节点已添加');
+        }
+        
+        // 添加新节点
+        function addNode(type, x, y, name = '', description = '') {
+            const nodeId = 'node_' + Date.now();
+            const defaultName = type === 'decision' ? '新决策' : '新结果';
+            
+            const node = {
+                id: nodeId,
+                type: type,
+                x: x,
+                y: y,
+                name: name || defaultName,
+                description: description || '',
+                options: type === 'decision' ? ['选项 1', '选项 2'] : []
+            };
+            
+            decisionTree.nodes.push(node);
+            renderTree();
+            checkEmptyState();
+            
+            return nodeId;
+        }
+        
+        // 选择节点
+        function selectNode(nodeId) {
+            // 先取消其他选择
+            deselectAll();
+            
+            const node = decisionTree.nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            selectedNodeId = nodeId;
+            currentNodeId.value = nodeId;
+            
+            // 更新编辑面板
+            nodeName.value = node.name;
+            nodeDescription.value = node.description;
+            
+            // 显示/隐藏决策选项
+            if (node.type === 'decision') {
+                decisionOptions.classList.remove('hidden');
+                renderOptions(node.options);
+            } else {
+                decisionOptions.classList.add('hidden');
+            }
+            
+            // 显示编辑面板
+            nodeEditor.classList.remove('hidden');
+            
+            // 重绘以高亮选中节点
+            renderTree();
+        }
+        
+        // 选择连接
+        function selectConnection(connectionId) {
+            // 先取消其他选择
+            deselectAll();
+            
+            selectedConnectionId = connectionId;
+            renderTree();
+            
+            // 隐藏节点编辑面板
+            nodeEditor.classList.add('hidden');
+        }
+        
+        // 取消所有选择
+        function deselectAll() {
+            selectedNodeId = null;
+            selectedConnectionId = null;
+            nodeEditor.classList.add('hidden');
+            renderTree();
+        }
+        
+        // 渲染选项列表
+        function renderOptions(options) {
+            optionsContainer.innerHTML = '';
+            
+            options.forEach(optionText => {
+                addOptionElement(optionText);
+            });
+        }
+        
+        // 添加选项元素
+        function addOptionElement(optionText = '') {
+            const optionItem = document.createElement('div');
+            optionItem.className = 'option-item flex items-center gap-2 mb-2';
+            optionItem.innerHTML = `
+                <input type="text" class="option-text flex-1 px-3 py-1.5 border border-gray-300 rounded-md text-sm" 
+                       value="${optionText}" placeholder="选项内容">
+                <button type="button" class="remove-option p-1.5 text-red-500 hover:bg-red-50 rounded-full transition-colors">
+                    <i class="fa fa-times"></i>
+                </button>
+            `;
+            optionsContainer.appendChild(optionItem);
+        }
+        
+        // 添加新选项
+        function addNewOption() {
+            addOptionElement();
+        }
+        
+        // 保存节点更改
+        function saveNodeChanges() {
+            if (!selectedNodeId) return;
+            
+            const node = decisionTree.nodes.find(n => n.id === selectedNodeId);
+            if (!node) return;
+            
+            // 验证名称
+            const nodeNameVal = nodeName.value.trim();
+            if (!nodeNameVal) {
+                showNotification('error', '节点名称不能为空');
+                nodeName.focus();
+                return;
+            }
+            
+            // 更新基本信息
+            node.name = nodeNameVal;
+            node.description = nodeDescription.value.trim();
+            
+            // 更新选项（仅决策节点）
+            if (node.type === 'decision') {
+                const optionInputs = optionsContainer.querySelectorAll('.option-text');
+                node.options = Array.from(optionInputs)
+                    .map(input => input.value.trim())
+                    .filter(text => text);
+                
+                // 确保至少有一个选项
+                if (node.options.length === 0) {
+                    node.options = ['选项 1'];
+                    renderOptions(node.options);
+                }
+            }
+            
+            renderTree();
+            showNotification('success', '节点已更新');
+        }
+        
+        // 删除选中节点
+        function deleteSelectedNode() {
+            if (!selectedNodeId) return;
+            
+            if (confirm('确定要删除此节点吗？相关连接也将被删除。')) {
+                // 删除节点
+                decisionTree.nodes = decisionTree.nodes.filter(n => n.id !== selectedNodeId);
+                
+                // 删除相关连接
+                decisionTree.connections = decisionTree.connections.filter(conn => 
+                    conn.source !== selectedNodeId && conn.target !== selectedNodeId
+                );
+                
+                deselectAll();
+                renderTree();
+                checkEmptyState();
+                showNotification('success', '节点已删除');
+            }
+        }
+        
+        // 删除选中连接
+        function deleteSelectedConnection() {
+            if (!selectedConnectionId) return;
+            
+            decisionTree.connections = decisionTree.connections.filter(conn => 
+                conn.id !== selectedConnectionId
+            );
+            
+            deselectAll();
+            renderTree();
+            showNotification('success', '连接已删除');
+        }
+        
+        // 渲染决策树
+        function renderTree() {
+            // 清空SVG
+            treeSvg.innerHTML = '';
+            
+            // 应用缩放和平移
+            treeSvg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            
+            // 创建箭头标记
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            
+            // 普通箭头
+            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            marker.setAttribute('id', 'arrowhead');
+            marker.setAttribute('viewBox', '0 -5 10 10');
+            marker.setAttribute('refX', '20');
+            marker.setAttribute('refY', '0');
+            marker.setAttribute('orient', 'auto');
+            marker.setAttribute('markerWidth', '6');
+            marker.setAttribute('markerHeight', '6');
+            
+            const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            arrow.setAttribute('d', 'M 0,-5 L 10,0 L 0,5');
+            arrow.setAttribute('fill', '#94A3B8');
+            marker.appendChild(arrow);
+            defs.appendChild(marker);
+            
+            // 选中状态箭头
+            const selectedMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            selectedMarker.setAttribute('id', 'selected-arrowhead');
+            selectedMarker.setAttribute('viewBox', '0 -5 10 10');
+            selectedMarker.setAttribute('refX', '20');
+            selectedMarker.setAttribute('refY', '0');
+            selectedMarker.setAttribute('orient', 'auto');
+            selectedMarker.setAttribute('markerWidth', '6');
+            selectedMarker.setAttribute('markerHeight', '6');
+            
+            const selectedArrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            selectedArrow.setAttribute('d', 'M 0,-5 L 10,0 L 0,5');
+            selectedArrow.setAttribute('fill', '#4F46E5');
+            selectedMarker.appendChild(selectedArrow);
+            defs.appendChild(selectedMarker);
+            
+            treeSvg.appendChild(defs);
+            
+            // 绘制连接线
+            drawConnections();
+            
+            // 绘制节点
+            drawNodes();
+        }
+        
+        // 绘制连接线
+        function drawConnections() {
+            decisionTree.connections.forEach(connection => {
+                const sourceNode = decisionTree.nodes.find(n => n.id === connection.source);
+                const targetNode = decisionTree.nodes.find(n => n.id === connection.target);
+                
+                if (!sourceNode || !targetNode) return;
+                
+                // 计算节点连接点坐标
+                let sourceX = sourceNode.x;
+                let sourceY = connection.sourceHandle === 'top' 
+                    ? sourceNode.y - 30  // 节点高度的一半
+                    : sourceNode.y + 30;
+                    
+                let targetX = targetNode.x;
+                let targetY = connection.targetHandle === 'top'
+                    ? targetNode.y - 30
+                    : targetNode.y + 30;
+                
+                // 创建连接组，使连接可点击
+                const connectionGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                connectionGroup.setAttribute('id', `connection_${connection.id}`);
+                connectionGroup.setAttribute('class', 'connection-group cursor-pointer');
+                
+                // 创建路径
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                
+                // 计算曲线控制点 - 根据连接方向优化路径
+                const dx = Math.abs(targetX - sourceX);
+                const controlDistance = Math.max(dx / 2, 50); // 确保有足够的弯曲
+                
+                let controlX1, controlX2;
+                
+                if (connection.sourceHandle === 'top') {
+                    // 顶部连接使用垂直曲线
+                    controlX1 = sourceX;
+                    controlX2 = targetX;
+                } else {
+                    // 底部连接使用水平曲线
+                    controlX1 = sourceX + controlDistance;
+                    controlX2 = targetX - controlDistance;
+                }
+                
+                // 创建贝塞尔曲线路径
+                const d = `M ${sourceX} ${sourceY} C ${controlX1} ${sourceY}, ${controlX2} ${targetY}, ${targetX} ${targetY}`;
+                path.setAttribute('d', d);
+                path.setAttribute('class', selectedConnectionId === connection.id ? 'connection-path-selected' : 'connection-path');
+                path.setAttribute('marker-end', selectedConnectionId === connection.id ? 'url(#selected-arrowhead)' : 'url(#arrowhead)');
+                
+                // 添加点击事件
+                connectionGroup.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectConnection(connection.id);
+                });
+                
+                // 添加到组
+                connectionGroup.appendChild(path);
+                
+                // 添加选项文本标签
+                if (connection.optionText) {
+                    const pathLength = path.getTotalLength();
+                    const midPoint = path.getPointAtLength(pathLength / 2);
+                    
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', midPoint.x);
+                    text.setAttribute('y', midPoint.y - 8);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('class', selectedConnectionId === connection.id ? 'connection-label-selected' : 'connection-label');
+                    text.textContent = connection.optionText;
+                    
+                    connectionGroup.appendChild(text);
+                }
+                
+                treeSvg.appendChild(connectionGroup);
+            });
+        }
+        
+        // 绘制节点
+        function drawNodes() {
+            decisionTree.nodes.forEach(node => {
+                // 创建节点组
+                const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                nodeGroup.setAttribute('id', node.id);
+                nodeGroup.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+                nodeGroup.setAttribute('class', 'node-group cursor-pointer');
+                
+                // 节点背景
+                const nodeWidth = 120;
+                const nodeHeight = 60;
+                const cornerRadius = 6;
+                
+                const nodeBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                nodeBg.setAttribute('width', nodeWidth);
+                nodeBg.setAttribute('height', nodeHeight);
+                nodeBg.setAttribute('rx', cornerRadius);
+                nodeBg.setAttribute('ry', cornerRadius);
+                nodeBg.setAttribute('x', -nodeWidth / 2);
+                nodeBg.setAttribute('y', -nodeHeight / 2);
+                
+                // 设置节点样式
+                if (node.type === 'decision') {
+                    nodeBg.setAttribute('fill', '#EEF2FF');
+                    nodeBg.setAttribute('stroke', '#4F46E5');
+                    nodeBg.setAttribute('stroke-width', selectedNodeId === node.id ? '2' : '1');
+                } else {
+                    nodeBg.setAttribute('fill', '#ECFDF5');
+                    nodeBg.setAttribute('stroke', '#10B981');
+                    nodeBg.setAttribute('stroke-width', selectedNodeId === node.id ? '2' : '1');
+                }
+                
+                // 添加选中状态样式
+                if (selectedNodeId === node.id) {
+                    nodeBg.classList.add('node-selected');
+                } else {
+                    nodeBg.classList.add('node-shadow');
+                }
+                
+                // 节点文本
+                const nodeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                nodeText.setAttribute('x', 0);
+                nodeText.setAttribute('y', 0);
+                nodeText.setAttribute('text-anchor', 'middle');
+                nodeText.setAttribute('dominant-baseline', 'middle');
+                nodeText.setAttribute('font-size', '14');
+                nodeText.setAttribute('fill', node.type === 'decision' ? '#4F46E5' : '#10B981');
+                
+                // 处理长文本
+                const displayText = node.name.length > 12 ? node.name.substring(0, 10) + '...' : node.name;
+                nodeText.textContent = displayText;
+                
+                // 顶部连接点
+                const topHandle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                topHandle.setAttribute('cx', 0);
+                topHandle.setAttribute('cy', -nodeHeight / 2);
+                topHandle.setAttribute('r', 6);
+                topHandle.setAttribute('fill', 'white');
+                topHandle.setAttribute('stroke', '#94A3B8');
+                topHandle.setAttribute('stroke-width', '1.5');
+                topHandle.setAttribute('class', 'connection-handle');
+                topHandle.setAttribute('data-handle', 'top');
+                topHandle.setAttribute('title', '拖动创建连接');
+                
+                // 底部连接点
+                const bottomHandle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                bottomHandle.setAttribute('cx', 0);
+                bottomHandle.setAttribute('cy', nodeHeight / 2);
+                bottomHandle.setAttribute('r', 6);
+                bottomHandle.setAttribute('fill', 'white');
+                bottomHandle.setAttribute('stroke', '#94A3B8');
+                bottomHandle.setAttribute('stroke-width', '1.5');
+                bottomHandle.setAttribute('class', 'connection-handle');
+                bottomHandle.setAttribute('data-handle', 'bottom');
+                bottomHandle.setAttribute('title', '拖动创建连接');
+                
+                // 添加到组
+                nodeGroup.appendChild(nodeBg);
+                nodeGroup.appendChild(nodeText);
+                nodeGroup.appendChild(topHandle);
+                nodeGroup.appendChild(bottomHandle);
+                
+                // 添加到SVG
+                treeSvg.appendChild(nodeGroup);
+                
+                // 设置节点事件
+                setupNodeEvents(nodeGroup, node.id);
+            });
+        }
+        
+        // 设置节点事件
+        function setupNodeEvents(nodeElement, nodeId) {
+            let isDraggingNode = false;
+            let nodeStartPos = { x: 0, y: 0 };
+            let mouseStartPos = { x: 0, y: 0 };
+            
+            // 节点点击事件
+            nodeElement.addEventListener('click', (e) => {
+                // 如果点击的是连接点，则不触发节点选择
+                if (e.target.classList.contains('connection-handle') || 
+                    e.target.closest('.connection-handle')) {
+                    return;
+                }
+                
+                e.stopPropagation();
+                selectNode(nodeId);
+            });
+            
+            // 节点鼠标按下事件
+            nodeElement.addEventListener('mousedown', (e) => {
+                // 如果点击的是连接点，则开始创建连接
+                const handle = e.target.closest('.connection-handle');
+                if (handle) {
+                    const handleType = handle.getAttribute('data-handle');
+                    startConnection(nodeId, handleType, e);
+                    return;
+                }
+                
+                e.stopPropagation();
+                isDraggingNode = true;
+                
+                const node = decisionTree.nodes.find(n => n.id === nodeId);
+                if (node) {
+                    nodeStartPos = { x: node.x, y: node.y };
+                }
+                
+                mouseStartPos = {
+                    x: e.clientX,
+                    y: e.clientY
+                };
+                
+                nodeElement.style.cursor = 'grabbing';
+            });
+            
+            // 节点拖动
+            document.addEventListener('mousemove', (e) => {
+                if (isDraggingNode && !creatingConnection) {
+                    const dx = (e.clientX - mouseStartPos.x) / scale;
+                    const dy = (e.clientY - mouseStartPos.y) / scale;
+                    
+                    const node = decisionTree.nodes.find(n => n.id === nodeId);
+                    if (node) {
+                        node.x = nodeStartPos.x + dx;
+                        node.y = nodeStartPos.y + dy;
+                        renderTree();
+                    }
+                }
+            });
+            
+            // 结束拖动
+            document.addEventListener('mouseup', () => {
+                if (isDraggingNode) {
+                    isDraggingNode = false;
+                    nodeElement.style.cursor = 'pointer';
+                }
+            });
+        }
+        
+        // 开始创建连接
+        function startConnection(sourceId, handleType, e) {
+            creatingConnection = true;
+            connectionSource = {
+                nodeId: sourceId,
+                handle: handleType
+            };
+            
+            // 获取源节点
+            const sourceNode = decisionTree.nodes.find(n => n.id === sourceId);
+            if (!sourceNode) return;
+            
+            // 创建临时连接线
+            tempConnection.innerHTML = '';
+            tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            tempLine.setAttribute('class', 'connection-path');
+            tempConnection.appendChild(tempLine);
+            
+            // 创建临时箭头
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            marker.setAttribute('id', 'temp-arrowhead');
+            marker.setAttribute('viewBox', '0 -5 10 10');
+            marker.setAttribute('refX', '20');
+            marker.setAttribute('refY', '0');
+            marker.setAttribute('orient', 'auto');
+            marker.setAttribute('markerWidth', '6');
+            marker.setAttribute('markerHeight', '6');
+            
+            const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            arrow.setAttribute('d', 'M 0,-5 L 10,0 L 0,5');
+            arrow.setAttribute('fill', '#94A3B8');
+            marker.appendChild(arrow);
+            defs.appendChild(marker);
+            tempConnection.appendChild(defs);
+            
+            tempLine.setAttribute('marker-end', 'url(#temp-arrowhead)');
+            
+            // 鼠标移动时更新临时线
+            const moveHandler = (e) => {
+                if (!creatingConnection) return;
+                
+                const rect = canvasContainer.getBoundingClientRect();
+                
+                // 计算源点在屏幕上的位置
+                let sourceX = sourceNode.x * scale + translateX;
+                let sourceY = handleType === 'top'
+                    ? (sourceNode.y - 30) * scale + translateY
+                    : (sourceNode.y + 30) * scale + translateY;
+                
+                // 鼠标位置（屏幕坐标）
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // 更新临时线
+                const dx = Math.abs(mouseX - sourceX);
+                const controlDistance = Math.max(dx / 2, 50);
+                
+                let controlX1, controlX2;
+                
+                if (handleType === 'top') {
+                    controlX1 = sourceX;
+                    controlX2 = mouseX;
+                } else {
+                    controlX1 = sourceX + controlDistance;
+                    controlX2 = mouseX - controlDistance;
+                }
+                
+                const d = `M ${sourceX} ${sourceY} C ${controlX1} ${sourceY}, ${controlX2} ${mouseY}, ${mouseX} ${mouseY}`;
+                tempLine.setAttribute('d', d);
+            };
+            
+            // 鼠标释放时处理连接
+            const upHandler = (e) => {
+                if (!creatingConnection) return;
+                
+                // 移除事件监听
+                document.removeEventListener('mousemove', moveHandler);
+                document.removeEventListener('mouseup', upHandler);
+                
+                // 清除临时线
+                tempConnection.innerHTML = '';
+                creatingConnection = false;
+                
+                // 检查是否点击了目标节点的连接点
+                const targetElement = e.target.closest('.node-group');
+                if (targetElement && targetElement.id !== sourceId) {
+                    const targetNodeId = targetElement.id;
+                    
+                    // 确定目标节点的哪个连接点被点击
+                    const rect = targetElement.getBoundingClientRect();
+                    const centerY = rect.top + rect.height / 2;
+                    const targetHandle = e.clientY < centerY ? 'top' : 'bottom';
+                    
+                    // 检查连接是否已存在
+                    const connectionExists = decisionTree.connections.some(conn => 
+                        conn.source === sourceId && 
+                        conn.target === targetNodeId &&
+                        conn.sourceHandle === handleType &&
+                        conn.targetHandle === targetHandle
+                    );
+                    
+                    if (!connectionExists) {
+                        // 获取源节点
+                        const sourceNode = decisionTree.nodes.find(n => n.id === sourceId);
+                        
+                        // 对于决策节点，使用第一个选项作为连接文本
+                        let optionText = '';
+                        if (sourceNode.type === 'decision' && sourceNode.options.length > 0) {
+                            optionText = sourceNode.options[0];
+                        }
+                        
+                        // 创建新连接
+                        decisionTree.connections.push({
+                            id: 'conn_' + Date.now(),
+                            source: sourceId,
+                            target: targetNodeId,
+                            sourceHandle: handleType,
+                            targetHandle: targetHandle,
+                            optionText: optionText
+                        });
+                        
+                        renderTree();
+                        showNotification('success', '连接已创建');
+                    } else {
+                        showNotification('warning', '连接已存在');
+                    }
+                }
+                
+                connectionSource = { nodeId: null, handle: null };
+            };
+            
+            // 添加临时事件监听
+            document.addEventListener('mousemove', moveHandler);
+            document.addEventListener('mouseup', upHandler);
+        }
+        
+        // 画布平移
+        function startPan(e) {
+            // 只有在空白区域点击才允许平移
+            if (e.target === canvasContainer || e.target === treeSvg) {
+                isPanning = true;
+                panStart.x = e.clientX;
+                panStart.y = e.clientY;
+                canvasContainer.style.cursor = 'grabbing';
+            }
+        }
+        
+        function pan(e) {
+            if (isPanning && !creatingConnection) {
+                const dx = e.clientX - panStart.x;
+                const dy = e.clientY - panStart.y;
+                
+                translateX += dx;
+                translateY += dy;
+                
+                panStart.x = e.clientX;
+                panStart.y = e.clientY;
+                
+                renderTree();
+            }
+        }
+        
+        function endPan() {
+            if (isPanning) {
+                isPanning = false;
+                canvasContainer.style.cursor = 'default';
+            }
+        }
+        
+        // 缩放控制
+        function zoom(delta) {
+            const newScale = scale + delta;
+            if (newScale >= 0.3 && newScale <= 2.5) {
+                scale = newScale;
+                renderTree();
+            }
+        }
+        
+        function resetZoom() {
+            scale = 1;
+            translateX = 0;
+            translateY = 0;
+            renderTree();
+        }
+        
+        function handleWheelZoom(e) {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.1 : -0.1;
+            zoom(delta);
+        }
+        
+        // 检查空状态
+        function checkEmptyState() {
+            if (decisionTree.nodes.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+        }
+        
+        // 清空画布
+        function clearAll(showConfirm = true) {
+            if (decisionTree.nodes.length === 0) return;
+            
+            if (showConfirm && !confirm('确定要清空画布吗？所有节点和连接都将被删除。')) {
+                return;
+            }
+            
+            decisionTree = { nodes: [], connections: [] };
+            deselectAll();
+            renderTree();
+            checkEmptyState();
+            showNotification('info', '画布已清空');
+        }
+        
+        // 创建新决策树
+        function createNewTree() {
+            if (decisionTree.nodes.length === 0) {
+                showNotification('info', '已准备好新画布');
+                return;
+            }
+            
+            if (confirm('确定要创建新决策树吗？当前内容将被清除。')) {
+                clearAll(false);
+            }
+        }
+        
+        // 保存到本地存储
+        function saveToLocalStorage() {
+            if (decisionTree.nodes.length === 0) {
+                showNotification('warning', '没有可保存的决策树');
+                return;
+            }
+            
+            try {
+                localStorage.setItem('decisionTreeData', JSON.stringify(decisionTree));
+                showNotification('success', '决策树已保存');
+            } catch (error) {
+                showNotification('error', '保存失败: ' + error.message);
+            }
+        }
+        
+        // 导出为JSON
+        function exportAsJson() {
+            if (decisionTree.nodes.length === 0) {
+                showNotification('warning', '没有可导出的决策树');
+                return;
+            }
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(decisionTree, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "decision-tree-" + new Date().toISOString().slice(0,10) + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            
+            showNotification('success', '决策树已导出为JSON');
+        }
+        
+        // 显示通知
+        function showNotification(type, message) {
+            // 设置通知样式
+            notification.className = 'fixed bottom-4 right-4 px-4 py-3 rounded-md shadow-lg transform translate-y-0 opacity-100 transition-all duration-300 z-50 flex items-center max-w-xs';
+            
+            switch (type) {
+                case 'success':
+                    notification.classList.add('bg-green-50', 'border', 'border-green-200', 'text-green-700');
+                    notificationIcon.className = 'fa fa-check-circle mr-2 text-lg text-green-500';
+                    break;
+                case 'error':
+                    notification.classList.add('bg-red-50', 'border', 'border-red-200', 'text-red-700');
+                    notificationIcon.className = 'fa fa-times-circle mr-2 text-lg text-red-500';
+                    break;
+                case 'warning':
+                    notification.classList.add('bg-yellow-50', 'border', 'border-yellow-200', 'text-yellow-700');
+                    notificationIcon.className = 'fa fa-exclamation-triangle mr-2 text-lg text-yellow-500';
+                    break;
+                case 'info':
+                    notification.classList.add('bg-blue-50', 'border', 'border-blue-200', 'text-blue-700');
+                    notificationIcon.className = 'fa fa-info-circle mr-2 text-lg text-blue-500';
+                    break;
+            }
+            
+            notificationMessage.textContent = message;
+            
+            // 3秒后隐藏
+            setTimeout(() => {
+                notification.classList.remove('translate-y-0', 'opacity-100');
+                notification.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 从本地存储加载
+        function loadFromStorage() {
+            try {
+                const savedData = localStorage.getItem('decisionTreeData');
+                if (savedData) {
+                    decisionTree = JSON.parse(savedData);
+                    renderTree();
+                    checkEmptyState();
+                    showNotification('info', '已加载上次保存的决策树');
+                }
+            } catch (error) {
+                console.error('加载失败:', error);
+            }
+        }
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', () => {
+            init();
+            loadFromStorage();
+        });
+    </script>
+</body>
+</html>
