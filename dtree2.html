@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策树划分节点仿真平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind自定义主题 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#10b981',
+                        accent: '#f59e0b',
+                        neutral: '#1f2937',
+                        light: '#f9fafb'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .canvas-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md transform hover:-translate-y-0.5;
+            }
+            .node-highlight {
+                animation: pulse 2s infinite;
+            }
+            @keyframes pulse {
+                0% {
+                    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+                }
+                70% {
+                    box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+                }
+                100% {
+                    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+                }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-neutral min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- 标题区域 -->
+        <header class="mb-8 text-center">
+            <h1 class="text-[clamp(1.8rem,5vw,2.8rem)] font-bold text-neutral mb-3">
+                决策树划分节点仿真平台
+            </h1>
+            <p class="text-gray-600 max-w-2xl mx-auto text-[clamp(1rem,2vw,1.1rem)]">
+                在画布上点击添加数据点，然后通过中位点划分创建决策树，直到每个点都被单独分隔
+            </p>
+        </header>
+        
+        <!-- 主要内容区 -->
+        <main class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- 控制面板 -->
+            <div class="lg:col-span-1 bg-white rounded-xl shadow-md p-5">
+                <h2 class="text-xl font-semibold mb-4 flex items-center text-neutral">
+                    <i class="fa fa-cogs text-primary mr-2"></i>控制面板
+                </h2>
+                
+                <div class="space-y-5">
+                    <!-- 主要操作按钮 -->
+                    <div class="space-y-3">
+                        <button id="addPointModeBtn" class="w-full py-3 px-4 bg-primary text-white rounded-lg font-medium flex items-center justify-center btn-hover active">
+                            <i class="fa fa-plus-circle mr-2"></i>添加点模式
+                        </button>
+                        
+                        <button id="splitBtn" class="w-full py-3 px-4 bg-secondary text-white rounded-lg font-medium flex items-center justify-center btn-hover" disabled>
+                            <i class="fa fa-scissors mr-2"></i>划分节点
+                        </button>
+                        
+                        <button id="clearBtn" class="w-full py-3 px-4 bg-red-500 text-white rounded-lg font-medium flex items-center justify-center btn-hover">
+                            <i class="fa fa-trash mr-2"></i>清除所有
+                        </button>
+                    </div>
+                    
+                    <hr class="border-gray-100">
+                    
+                    <!-- 划分设置 -->
+                    <div>
+                        <h3 class="font-medium text-neutral mb-3">划分设置</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm text-gray-600">划分方向</label>
+                                <div class="flex space-x-2">
+                                    <button id="splitAutoBtn" class="px-3 py-1 bg-primary text-white text-sm rounded-md">自动</button>
+                                    <button id="splitXBtn" class="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-md">X轴</button>
+                                    <button id="splitYBtn" class="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-md">Y轴</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="border-gray-100">
+                    
+                    <!-- 统计信息 -->
+                    <div>
+                        <h3 class="font-medium text-neutral mb-3">统计信息</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <p class="text-xs text-gray-500">数据点总数</p>
+                                <p id="pointCount" class="text-xl font-bold text-neutral">0</p>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <p class="text-xs text-gray-500">划分次数</p>
+                                <p id="splitCount" class="text-xl font-bold text-neutral">0</p>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <p class="text-xs text-gray-500">当前节点</p>
+                                <p id="nodeCount" class="text-xl font-bold text-neutral">1</p>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <p class="text-xs text-gray-500">完成节点</p>
+                                <p id="completedCount" class="text-xl font-bold text-neutral">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="border-gray-100">
+                    
+                    <!-- 操作指南 -->
+                    <div>
+                        <h3 class="font-medium text-neutral mb-3">操作指南</h3>
+                        <ul class="text-sm text-gray-600 space-y-2">
+                            <li class="flex items-start">
+                                <i class="fa fa-mouse-pointer text-primary mt-1 mr-2"></i>
+                                <span>在画布上点击添加数据点</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fa fa-arrows-h text-primary mt-1 mr-2"></i>
+                                <span>选择划分方向（自动/X轴/Y轴）</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fa fa-scissors text-primary mt-1 mr-2"></i>
+                                <span>点击"划分节点"进行分割</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fa fa-info-circle text-primary mt-1 mr-2"></i>
+                                <span>节点会按中位点分割直到每个点独立</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 画布区域 -->
+            <div class="lg:col-span-3">
+                <div class="bg-white rounded-xl shadow-md p-5 h-full flex flex-col">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center text-neutral">
+                        <i class="fa fa-square-o text-primary mr-2"></i>决策树画布
+                    </h2>
+                    
+                    <!-- 画布容器 -->
+                    <div class="relative flex-grow canvas-shadow rounded-lg border border-gray-200 overflow-hidden" style="min-height: 550px;">
+                        <canvas id="treeCanvas" class="w-full h-full"></canvas>
+                        
+                        <!-- 初始提示覆盖层 -->
+                        <div id="initialOverlay" class="absolute inset-0 bg-white/80 flex flex-col items-center justify-center pointer-events-none">
+                            <i class="fa fa-hand-pointer-o text-4xl text-primary/60 mb-3"></i>
+                            <p class="text-gray-500 text-center max-w-md px-4">
+                                点击画布添加数据点开始构建决策树
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- 状态信息 -->
+                    <div class="mt-4 flex justify-between items-center">
+                        <div id="statusMessage" class="text-sm text-gray-600">
+                            准备就绪，等待添加数据点
+                        </div>
+                        <div id="currentNodeInfo" class="text-sm font-medium text-primary">
+                            当前节点: 1 (0个点)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 页脚 -->
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>决策树构建工具 &copy; 2023 | 交互式数据分割可视化</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取画布和上下文
+            const canvas = document.getElementById('treeCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 应用状态
+            const state = {
+                points: [],
+                nodes: [],
+                splitDirection: 'auto', // auto, x, y
+                splitCount: 0,
+                isAddingPoints: true,
+                nextNodeId: 1
+            };
+            
+            // 初始化节点
+            function initializeNodes() {
+                // 确保有边距
+                const padding = 40;
+                state.nodes = [{
+                    id: state.nextNodeId++,
+                    x1: padding,
+                    y1: padding,
+                    x2: canvas.width - padding,
+                    y2: canvas.height - padding,
+                    points: [],
+                    split: null, // { axis: 'x'|'y', position: number }
+                    parentId: null
+                }];
+            }
+            
+            // 设置画布尺寸
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                
+                // 重新初始化节点以适应新尺寸
+                initializeNodes();
+                redrawAll();
+            }
+            
+            // 初始化画布尺寸并监听窗口大小变化
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // 绘制所有元素
+            function redrawAll() {
+                // 清除画布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制所有节点
+                state.nodes.forEach(node => drawNode(node));
+                
+                // 绘制所有点
+                state.points.forEach(point => drawPoint(point));
+                
+                // 更新统计信息
+                updateStats();
+            }
+            
+            // 绘制单个节点
+            function drawNode(node) {
+                // 绘制节点边框
+                ctx.strokeStyle = '#e5e7eb';
+                ctx.lineWidth = 1;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.fillRect(node.x1, node.y1, node.x2 - node.x1, node.y2 - node.y1);
+                ctx.strokeRect(node.x1, node.y1, node.x2 - node.x1, node.y2 - node.y1);
+                
+                // 如果是当前可分割的节点，高亮显示
+                if (isNodeSplittable(node)) {
+                    ctx.strokeStyle = '#2563eb';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(node.x1, node.y1, node.x2 - node.x1, node.y2 - node.y1);
+                }
+                
+                // 绘制分割线
+                if (node.split) {
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([6, 3]);
+                    
+                    if (node.split.axis === 'x') {
+                        // 垂直分割线
+                        ctx.beginPath();
+                        ctx.moveTo(node.split.position, node.y1);
+                        ctx.lineTo(node.split.position, node.y2);
+                        ctx.stroke();
+                        
+                        // 显示分割值
+                        drawSplitLabel(node.split.position, node.y1 + 20, 
+                                      `x = ${node.split.position.toFixed(1)}`, 'center');
+                    } else {
+                        // 水平分割线
+                        ctx.beginPath();
+                        ctx.moveTo(node.x1, node.split.position);
+                        ctx.lineTo(node.x2, node.split.position);
+                        ctx.stroke();
+                        
+                        // 显示分割值
+                        drawSplitLabel(node.x1 + 20, node.split.position - 5, 
+                                      `y = ${node.split.position.toFixed(1)}`, 'left');
+                    }
+                    
+                    ctx.setLineDash([]); // 重置为实线
+                }
+                
+                // 显示节点信息
+                ctx.fillStyle = '#4b5563';
+                ctx.font = '12px Inter, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(`节点 ${node.id} (${node.points.length}个点)`, 
+                           node.x1 + 10, node.y1 + 20);
+            }
+            
+            // 绘制分割标签
+            function drawSplitLabel(x, y, text, align) {
+                ctx.fillStyle = '#ef4444';
+                ctx.font = '12px Inter, sans-serif';
+                ctx.textAlign = align;
+                ctx.fillText(text, x, y);
+            }
+            
+            // 绘制单个点
+            function drawPoint(point) {
+                // 找到点所在的节点
+                const node = state.nodes.find(n => n.points.includes(point));
+                const isInSplittableNode = node && isNodeSplittable(node);
+                
+                // 点的颜色
+                ctx.fillStyle = isInSplittableNode ? '#2563eb' : '#60a5fa';
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 点的边框
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // 点的编号
+                ctx.fillStyle = 'white';
+                ctx.font = '10px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(point.id, point.x, point.y);
+            }
+            
+            // 添加点到画布
+            function addPoint(x, y) {
+                // 找到点所在的最内层未分割节点
+                let targetNode = null;
+                for (let i = state.nodes.length - 1; i >= 0; i--) {
+                    const node = state.nodes[i];
+                    if (x >= node.x1 && x <= node.x2 && y >= node.y1 && y <= node.y2 && 
+                        !node.split) {
+                        targetNode = node;
+                        break;
+                    }
+                }
+                
+                if (!targetNode) {
+                    showStatus('请在未分割的节点区域内添加点', 'error');
+                    return false;
+                }
+                
+                // 创建新点
+                const newPoint = {
+                    id: state.points.length + 1,
+                    x,
+                    y
+                };
+                
+                // 添加点到全局数组和节点
+                state.points.push(newPoint);
+                targetNode.points.push(newPoint);
+                
+                showStatus(`已添加点 #${newPoint.id} (${Math.round(x)}, ${Math.round(y)})`, 'success');
+                redrawAll();
+                
+                // 启用划分按钮
+                if (state.points.length >= 2) {
+                    document.getElementById('splitBtn').disabled = false;
+                }
+                
+                // 隐藏初始覆盖层
+                document.getElementById('initialOverlay').style.display = 'none';
+                
+                return true;
+            }
+            
+            // 检查节点是否可分割
+            function isNodeSplittable(node) {
+                return !node.split && node.points.length >= 2;
+            }
+            
+            // 找到下一个可分割的节点
+            function findNextSplittableNode() {
+                return state.nodes.find(node => isNodeSplittable(node));
+            }
+            
+            // 计算中位点
+            function calculateMedian(values) {
+                // 排序值
+                const sorted = [...values].sort((a, b) => a - b);
+                const mid = Math.floor(sorted.length / 2);
+                
+                // 如果是偶数个点，取中间两个的平均值
+                if (sorted.length % 2 === 0) {
+                    return (sorted[mid - 1] + sorted[mid]) / 2;
+                }
+                
+                // 奇数个点，取中间的那个
+                return sorted[mid];
+            }
+            
+            // 分割节点
+            function splitCurrentNode() {
+                const nodeToSplit = findNextSplittableNode();
+                if (!nodeToSplit) {
+                    showStatus('没有可分割的节点了（所有节点都只有0或1个点）', 'info');
+                    document.getElementById('splitBtn').disabled = true;
+                    return;
+                }
+                
+                // 根据当前设置的方向计算分割
+                let splitAxis, splitPosition;
+                
+                if (state.splitDirection === 'auto') {
+                    // 自动选择最佳分割方向
+                    const xCoords = nodeToSplit.points.map(p => p.x);
+                    const yCoords = nodeToSplit.points.map(p => p.y);
+                    
+                    // 计算x方向的分布范围
+                    const xRange = Math.max(...xCoords) - Math.min(...xCoords);
+                    // 计算y方向的分布范围
+                    const yRange = Math.max(...yCoords) - Math.min(...yCoords);
+                    
+                    // 选择分布更广泛的方向进行分割
+                    splitAxis = xRange >= yRange ? 'x' : 'y';
+                } else {
+                    // 使用手动选择的方向
+                    splitAxis = state.splitDirection;
+                }
+                
+                // 计算中位点
+                if (splitAxis === 'x') {
+                    splitPosition = calculateMedian(nodeToSplit.points.map(p => p.x));
+                } else {
+                    splitPosition = calculateMedian(nodeToSplit.points.map(p => p.y));
+                }
+                
+                // 记录分割信息
+                nodeToSplit.split = {
+                    axis: splitAxis,
+                    position: splitPosition
+                };
+                
+                // 创建子节点
+                let childNode;
+                
+                if (splitAxis === 'x') {
+                    // 垂直分割 - 创建右侧节点
+                    childNode = {
+                        id: state.nextNodeId++,
+                        x1: splitPosition,
+                        y1: nodeToSplit.y1,
+                        x2: nodeToSplit.x2,
+                        y2: nodeToSplit.y2,
+                        points: nodeToSplit.points.filter(p => p.x > splitPosition),
+                        split: null,
+                        parentId: nodeToSplit.id
+                    };
+                    
+                    // 更新当前节点为左侧节点
+                    nodeToSplit.x2 = splitPosition;
+                    nodeToSplit.points = nodeToSplit.points.filter(p => p.x <= splitPosition);
+                } else {
+                    // 水平分割 - 创建下侧节点
+                    childNode = {
+                        id: state.nextNodeId++,
+                        x1: nodeToSplit.x1,
+                        y1: splitPosition,
+                        x2: nodeToSplit.x2,
+                        y2: nodeToSplit.y2,
+                        points: nodeToSplit.points.filter(p => p.y > splitPosition),
+                        split: null,
+                        parentId: nodeToSplit.id
+                    };
+                    
+                    // 更新当前节点为上侧节点
+                    nodeToSplit.y2 = splitPosition;
+                    nodeToSplit.points = nodeToSplit.points.filter(p => p.y <= splitPosition);
+                }
+                
+                // 添加子节点
+                state.nodes.push(childNode);
+                state.splitCount++;
+                
+                // 显示状态信息
+                showStatus(`已分割节点 #${nodeToSplit.id}，沿${splitAxis === 'x' ? 'X' : 'Y'}轴在 ${splitPosition.toFixed(1)} 处`, 'info');
+                
+                // 重绘
+                redrawAll();
+                
+                // 检查是否还有可分割的节点
+                if (!findNextSplittableNode()) {
+                    showStatus('所有点已被单独分隔！决策树构建完成', 'success');
+                    document.getElementById('splitBtn').disabled = true;
+                }
+            }
+            
+            // 清除所有内容
+            function clearAll() {
+                state.points = [];
+                state.splitCount = 0;
+                state.nextNodeId = 1;
+                initializeNodes();
+                
+                // 重置UI状态
+                document.getElementById('splitBtn').disabled = true;
+                document.getElementById('initialOverlay').style.display = 'flex';
+                showStatus('已清除所有数据，准备就绪', 'info');
+                
+                redrawAll();
+            }
+            
+            // 更新统计信息
+            function updateStats() {
+                // 更新计数显示
+                document.getElementById('pointCount').textContent = state.points.length;
+                document.getElementById('splitCount').textContent = state.splitCount;
+                document.getElementById('nodeCount').textContent = state.nodes.length;
+                
+                // 计算已完成的节点（包含0或1个点的节点）
+                const completedCount = state.nodes.filter(node => node.points.length <= 1).length;
+                document.getElementById('completedCount').textContent = completedCount;
+                
+                // 更新当前节点信息
+                const currentNode = findNextSplittableNode() || state.nodes[0];
+                document.getElementById('currentNodeInfo').textContent = 
+                    `当前节点: ${currentNode.id} (${currentNode.points.length}个点)`;
+            }
+            
+            // 显示状态消息
+            function showStatus(message, type = 'info') {
+                const statusEl = document.getElementById('statusMessage');
+                statusEl.textContent = message;
+                
+                // 设置样式
+                statusEl.className = 'text-sm';
+                switch(type) {
+                    case 'error':
+                        statusEl.classList.add('text-red-500');
+                        break;
+                    case 'success':
+                        statusEl.classList.add('text-green-500');
+                        break;
+                    default:
+                        statusEl.classList.add('text-gray-600');
+                }
+            }
+            
+            // 事件监听：画布点击添加点
+            canvas.addEventListener('click', function(e) {
+                if (!state.isAddingPoints) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                addPoint(x, y);
+            });
+            
+            // 事件监听：划分按钮
+            document.getElementById('splitBtn').addEventListener('click', splitCurrentNode);
+            
+            // 事件监听：清除按钮
+            document.getElementById('clearBtn').addEventListener('click', clearAll);
+            
+            // 事件监听：划分方向选择
+            document.getElementById('splitAutoBtn').addEventListener('click', function() {
+                state.splitDirection = 'auto';
+                updateSplitButtons();
+            });
+            
+            document.getElementById('splitXBtn').addEventListener('click', function() {
+                state.splitDirection = 'x';
+                updateSplitButtons();
+            });
+            
+            document.getElementById('splitYBtn').addEventListener('click', function() {
+                state.splitDirection = 'y';
+                updateSplitButtons();
+            });
+            
+            // 更新划分按钮状态
+            function updateSplitButtons() {
+                document.getElementById('splitAutoBtn').className = 
+                    state.splitDirection === 'auto' 
+                        ? 'px-3 py-1 bg-primary text-white text-sm rounded-md'
+                        : 'px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-md';
+                
+                document.getElementById('splitXBtn').className = 
+                    state.splitDirection === 'x' 
+                        ? 'px-3 py-1 bg-primary text-white text-sm rounded-md'
+                        : 'px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-md';
+                
+                document.getElementById('splitYBtn').className = 
+                    state.splitDirection === 'y' 
+                        ? 'px-3 py-1 bg-primary text-white text-sm rounded-md'
+                        : 'px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-md';
+            }
+            
+            // 初始化绘制
+            redrawAll();
+        });
+    </script>
+</body>
+</html>
+    
